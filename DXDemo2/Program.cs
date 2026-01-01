@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using Windows.Win32;
@@ -85,17 +86,16 @@ internal unsafe class DX12Engine {
         ShowWindow(m_hwnd, SHOW_WINDOW_CMD.SW_SHOW);
     }
 
+    [Conditional("DEBUG")]
     private void CreateDebugDevice() {
         // [STAThread] attribute on Main method handles this
         //CoInitialize();
 
-#if DEBUG
         D3D12GetDebugInterface(typeof(ID3D12Debug).GUID, out var ppvDebug);
         m_D3D12DebugDevice = ppvDebug as ID3D12Debug;
         m_D3D12DebugDevice.EnableDebugLayer();
 
         m_DXGICreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
-#endif
     }
 
     private bool CreateDevice() {
