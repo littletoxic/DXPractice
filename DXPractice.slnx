@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="DXDemo1/DXDemo1.csproj" Id="d9b1b87e-5f14-41eb-b347-efda3bf8b779" />
+  <Project Path="DXDemo2/DXDemo2.csproj" Id="e073df7c-e097-45bf-8bf3-ec24d28f09e7" />
+</Solution>
