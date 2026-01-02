@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DXDemo3": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
