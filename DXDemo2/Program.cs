@@ -56,16 +56,18 @@ internal unsafe class DX12Engine {
 
     private void InitWindow(SafeHandle hins) {
         const string className = "DX12 Game";
+        var pClassName = stackalloc char[className.Length + 1];
 
-        fixed (char* pClassName = className) {
-            WNDCLASSW wc = new() {
-                hInstance = new(hins.DangerousGetHandle()),
-                lpfnWndProc = &CallBackFunc,
-                lpszClassName = pClassName,
-            };
+        className.AsSpan().CopyTo(new Span<char>(pClassName, className.Length));
 
-            RegisterClass(wc);
-        }
+        WNDCLASSW wc = new() {
+            hInstance = new(hins.DangerousGetHandle()),
+            lpfnWndProc = &CallBackFunc,
+            lpszClassName = pClassName,
+        };
+
+        RegisterClass(wc);
+
 
         m_hwnd = CreateWindowEx(
             0,
