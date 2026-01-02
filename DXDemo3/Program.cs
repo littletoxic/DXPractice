@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32;
@@ -135,14 +134,14 @@ internal unsafe class DX12Engine {
         // [STAThread] attribute on Main method handles this
         //CoInitialize();
 
-        D3D12GetDebugInterface(out _d3d12DebugDevice);
+        D3D12GetDebugInterface(out _d3d12DebugDevice).ThrowOnFailure();
         _d3d12DebugDevice.EnableDebugLayer();
 
         _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
     }
 
     private bool CreateDevice() {
-        CreateDXGIFactory2(_dxgiCreateFactoryFlag, out _dxgiFactory);
+        CreateDXGIFactory2(_dxgiCreateFactoryFlag, out _dxgiFactory).ThrowOnFailure();
 
         for (uint i = 0; _dxgiFactory.EnumAdapters1(i, out _dxgiAdapter) != HRESULT.DXGI_ERROR_NOT_FOUND; i++) {
             // 找到显卡，就创建 D3D12 设备，从高到低遍历所有功能版本，创建成功就跳出
@@ -255,7 +254,7 @@ internal unsafe class DX12Engine {
             &rootSignatureDesc,
             D3D_ROOT_SIGNATURE_VERSION.D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
-            out var errorBlob);
+            out var errorBlob).ThrowOnFailure();
 
         if (errorBlob != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlob.GetBufferPointer());
