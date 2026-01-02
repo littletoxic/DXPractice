@@ -380,19 +380,19 @@ internal unsafe class DX12Engine {
     }
 
     private void CreateVertexResource() {
-        var vertices = stackalloc Vertex[6] {
+        ReadOnlySpan<Vertex> vertices = [
             new() { Position = new(-0.75f, 0.75f, 0f, 1f), Color = new(Blue) },
-            new() { Position = new(0.75f, 0.75f, 0f, 1f), Color = new (Yellow) },
-            new() { Position = new(0.75f, -0.75f, 0f, 1f), Color = new (Red) },
-            new() { Position = new(-0.75f, 0.75f, 0f, 1f), Color = new (Blue) },
-            new() { Position = new(0.75f, -0.75f, 0f, 1f), Color = new (Red) },
+            new() { Position = new(0.75f, 0.75f, 0f, 1f), Color = new(Yellow) },
+            new() { Position = new(0.75f, -0.75f, 0f, 1f), Color = new(Red) },
+            new() { Position = new(-0.75f, 0.75f, 0f, 1f), Color = new(Blue) },
+            new() { Position = new(0.75f, -0.75f, 0f, 1f), Color = new(Red) },
             new() { Position = new(-0.75f, -0.75f, 0f, 1f), Color = new(Green) },
-        };
+        ];
 
         var vertexDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
             Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            Width = (ulong)(sizeof(Vertex) * 6),
+            Width = (ulong)(sizeof(Vertex) * vertices.Length),
             Height = 1,
             Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
@@ -411,11 +411,11 @@ internal unsafe class DX12Engine {
             out _vertexResource);
 
         _vertexResource.Map(0, null, out var transferPointer);
-        Buffer.MemoryCopy(vertices, transferPointer, sizeof(Vertex) * 6, sizeof(Vertex) * 6);
+        vertices.CopyTo(new(transferPointer, vertices.Length));
         _vertexResource.Unmap(0, null);
 
         _vertexBufferView.BufferLocation = _vertexResource.GetGPUVirtualAddress();
-        _vertexBufferView.SizeInBytes = (uint)(sizeof(Vertex) * 6);
+        _vertexBufferView.SizeInBytes = (uint)(sizeof(Vertex) * vertices.Length);
         _vertexBufferView.StrideInBytes = (uint)sizeof(Vertex);
     }
 
