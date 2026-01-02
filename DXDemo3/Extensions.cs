@@ -96,10 +96,8 @@ internal static class Extensions {
             }
         }
 
-        if (__ppvResource_native != null) {
-            resource = ComInterfaceMarshaller<T>.ConvertToManaged(__ppvResource_native);
-            ComInterfaceMarshaller<object>.Free(__ppvResource_native);
-        }
+        resource = ComInterfaceMarshaller<T>.ConvertToManaged(__ppvResource_native);
+        ComInterfaceMarshaller<object>.Free(__ppvResource_native);
     }
 
     // IDXGISwapChain 实例扩展

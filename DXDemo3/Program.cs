@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32;
@@ -34,11 +35,11 @@ internal unsafe class DX12Engine {
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
     private static readonly D3D_FEATURE_LEVEL[] DX12SupportLevels = [
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_1,        // 12.1
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_0,        // 12
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_1,        // 11.1
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0         // 11
+        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
+        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_1,        // 12.1
+        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_0,        // 12
+        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_1,        // 11.1
+        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0         // 11
     ];
 
     private const int WindowWidth = 640;
@@ -75,8 +76,8 @@ internal unsafe class DX12Engine {
     private ID3D12PipelineState _pipelineStateObject;
 
     private struct Vertex {
-        internal __float_4 Position;
-        internal __float_4 Color;
+        internal Vector4 Position;
+        internal Vector4 Color;
     }
     private ID3D12Resource _vertexResource;
     private D3D12_VERTEX_BUFFER_VIEW _vertexBufferView;
@@ -102,6 +103,7 @@ internal unsafe class DX12Engine {
         var pClassName = stackalloc char[className.Length + 1]; // +1 for null terminator
 
         className.AsSpan().CopyTo(new Span<char>(pClassName, className.Length));
+        pClassName[className.Length] = '\0';
 
         WNDCLASSW wc = new() {
             hInstance = new(hInstance.DangerousGetHandle()),
@@ -278,6 +280,7 @@ internal unsafe class DX12Engine {
         var semanticNamePosition = "POSITION"u8;
         byte* pSemanticNamePosition = stackalloc byte[semanticNamePosition.Length + 1];
         semanticNamePosition.CopyTo(new Span<byte>(pSemanticNamePosition, semanticNamePosition.Length));
+        pSemanticNamePosition[semanticNamePosition.Length] = 0;
 
         inputElementDesc[0] = new() {
             SemanticName = new(pSemanticNamePosition),
@@ -293,6 +296,7 @@ internal unsafe class DX12Engine {
         var semanticNameColor = "COLOR"u8;
         byte* pSemanticNameColor = stackalloc byte[semanticNameColor.Length + 1];
         semanticNameColor.CopyTo(new Span<byte>(pSemanticNameColor, semanticNameColor.Length));
+        pSemanticNameColor[semanticNameColor.Length] = 0;
 
         inputElementDesc[1] = new() {
             SemanticName = new(pSemanticNameColor),
@@ -377,12 +381,12 @@ internal unsafe class DX12Engine {
 
     private void CreateVertexResource() {
         var vertices = stackalloc Vertex[6] {
-            new() { Position = new ReadOnlySpan<float>([-0.75f, 0.75f, 0f, 1f]), Color = new ReadOnlySpan<float>(Blue) },
-            new() { Position = new ReadOnlySpan<float>([0.75f, 0.75f, 0f, 1f]), Color = new ReadOnlySpan<float>(Yellow) },
-            new() { Position = new ReadOnlySpan<float>([0.75f, -0.75f, 0f, 1f]), Color = new ReadOnlySpan<float>(Red) },
-            new() { Position = new ReadOnlySpan<float>([-0.75f, 0.75f, 0f, 1f]), Color = new ReadOnlySpan<float>(Blue) },
-            new() { Position = new ReadOnlySpan<float>([0.75f, -0.75f, 0f, 1f]), Color = new ReadOnlySpan<float>(Red) },
-            new() { Position = new ReadOnlySpan<float>([-0.75f, -0.75f, 0f, 1f]), Color = new ReadOnlySpan<float>(Green) },
+            new() { Position = new(-0.75f, 0.75f, 0f, 1f), Color = new(Blue) },
+            new() { Position = new(0.75f, 0.75f, 0f, 1f), Color = new (Yellow) },
+            new() { Position = new(0.75f, -0.75f, 0f, 1f), Color = new (Red) },
+            new() { Position = new(-0.75f, 0.75f, 0f, 1f), Color = new (Blue) },
+            new() { Position = new(0.75f, -0.75f, 0f, 1f), Color = new (Red) },
+            new() { Position = new(-0.75f, -0.75f, 0f, 1f), Color = new(Green) },
         };
 
         var vertexDesc = new D3D12_RESOURCE_DESC() {
