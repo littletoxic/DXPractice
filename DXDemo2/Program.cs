@@ -26,50 +26,50 @@ internal unsafe class DX12Engine {
     private const int WindowHeight = 480;
     private const int FrameCount = 3;
 
-    private HWND m_hwnd;
+    private HWND _hwnd;
 
-    private ID3D12Debug m_D3D12DebugDevice;
-    private DXGI_CREATE_FACTORY_FLAGS m_DXGICreateFactoryFlag;
+    private ID3D12Debug _d3d12DebugDevice;
+    private DXGI_CREATE_FACTORY_FLAGS _dxgiCreateFactoryFlag;
 
-    private IDXGIFactory5 m_DXGIFactory;
-    private IDXGIAdapter1 m_DXGIAdapter;
-    private ID3D12Device4 m_D3D12Device;
+    private IDXGIFactory5 _dxgiFactory;
+    private IDXGIAdapter1 _dxgiAdapter;
+    private ID3D12Device4 _d3d12Device;
 
-    private ID3D12CommandQueue m_CommandQueue;
-    private ID3D12CommandAllocator m_CommandAllocator;
-    private ID3D12GraphicsCommandList m_CommandList;
+    private ID3D12CommandQueue _commandQueue;
+    private ID3D12CommandAllocator _commandAllocator;
+    private ID3D12GraphicsCommandList _commandList;
 
-    private ID3D12DescriptorHeap m_RTVHeap;
-    private IDXGISwapChain3 m_DXGISwapChain;
-    private ComPtr<ID3D12Resource>[] m_RenderTarget;
-    private D3D12_CPU_DESCRIPTOR_HANDLE RTVHandle;
-    private uint RTVDescriptorSize = 0;
-    private uint FrameIndex = 0;
+    private ID3D12DescriptorHeap _rtvHeap;
+    private IDXGISwapChain3 _dxgiSwapChain;
+    private ComPtr<ID3D12Resource>[] _renderTargets;
+    private D3D12_CPU_DESCRIPTOR_HANDLE _rtvHandle;
+    private uint _rtvDescriptorSize = 0;
+    private uint _frameIndex = 0;
 
-    private ID3D12Fence m_Fence;
-    ulong FenceValue = 0;
-    SafeHandle RenderEvent;
-    D3D12_RESOURCE_BARRIER beg_barrier;
-    D3D12_RESOURCE_BARRIER end_barrier;
+    private ID3D12Fence _fence;
+    private ulong _fenceValue = 0;
+    private SafeHandle _renderEvent;
+    private D3D12_RESOURCE_BARRIER _beginBarrier;
+    private D3D12_RESOURCE_BARRIER _endBarrier;
 
     private readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
 
-    private void InitWindow(SafeHandle hins) {
+    private void InitWindow(SafeHandle hInstance) {
         const string className = "DX12 Game";
-        var pClassName = stackalloc char[className.Length + 1];
+        var pClassName = stackalloc char[className.Length + 1]; // +1 for null terminator
 
         className.AsSpan().CopyTo(new Span<char>(pClassName, className.Length));
 
         WNDCLASSW wc = new() {
-            hInstance = new(hins.DangerousGetHandle()),
-            lpfnWndProc = &CallBackFunc,
+            hInstance = new(hInstance.DangerousGetHandle()),
+            lpfnWndProc = &WindowProc,
             lpszClassName = pClassName,
         };
 
         RegisterClass(wc);
 
 
-        m_hwnd = CreateWindowEx(
+        _hwnd = CreateWindowEx(
             0,
             className,
             "DX12 Game Window",
@@ -80,10 +80,10 @@ internal unsafe class DX12Engine {
             WindowHeight,
             HWND.Null,
             null,
-            hins,
+            hInstance,
             null);
 
-        ShowWindow(m_hwnd, SHOW_WINDOW_CMD.SW_SHOW);
+        ShowWindow(_hwnd, SHOW_WINDOW_CMD.SW_SHOW);
     }
 
     [Conditional("DEBUG")]
@@ -91,17 +91,17 @@ internal unsafe class DX12Engine {
         // [STAThread] attribute on Main method handles this
         //CoInitialize();
 
-        D3D12GetDebugInterface(out m_D3D12DebugDevice);
-        m_D3D12DebugDevice.EnableDebugLayer();
+        D3D12GetDebugInterface(out _d3d12DebugDevice);
+        _d3d12DebugDevice.EnableDebugLayer();
 
-        m_DXGICreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
+        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
     }
 
     private bool CreateDevice() {
-        CreateDXGIFactory2(m_DXGICreateFactoryFlag, out m_DXGIFactory);
+        CreateDXGIFactory2(_dxgiCreateFactoryFlag, out _dxgiFactory);
 
         // DX12 支持的所有功能版本，你的显卡最低需要支持 11.0
-        D3D_FEATURE_LEVEL[] dx12SupportLevel = [
+        D3D_FEATURE_LEVEL[] dx12SupportLevels = [
             D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
             D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_1,        // 12.1
             D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_0,        // 12.0
@@ -109,10 +109,10 @@ internal unsafe class DX12Engine {
             D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0         // 11.0
         ];
 
-        for (uint i = 0; m_DXGIFactory.EnumAdapters1(i, out m_DXGIAdapter) != HRESULT.DXGI_ERROR_NOT_FOUND; i++) {
+        for (uint i = 0; _dxgiFactory.EnumAdapters1(i, out _dxgiAdapter) != HRESULT.DXGI_ERROR_NOT_FOUND; i++) {
             // 找到显卡，就创建 D3D12 设备，从高到低遍历所有功能版本，创建成功就跳出
-            foreach (var level in dx12SupportLevel) {
-                if (D3D12CreateDevice(m_DXGIAdapter, level, out m_D3D12Device).Succeeded) {
+            foreach (var level in dx12SupportLevels) {
+                if (D3D12CreateDevice(_dxgiAdapter, level, out _d3d12Device).Succeeded) {
                     return true;
                 }
             }
@@ -129,30 +129,30 @@ internal unsafe class DX12Engine {
             Type = type,
         };
 
-        m_D3D12Device.CreateCommandQueue(queueDesc, out m_CommandQueue);
+        _d3d12Device.CreateCommandQueue(queueDesc, out _commandQueue);
 
-        m_D3D12Device.CreateCommandAllocator(type, out m_CommandAllocator);
+        _d3d12Device.CreateCommandAllocator(type, out _commandAllocator);
 
-        m_D3D12Device.CreateCommandList(
+        _d3d12Device.CreateCommandList(
             0,
             type,
-            m_CommandAllocator,
+            _commandAllocator,
             null,
-            out m_CommandList);
+            out _commandList);
 
-        m_CommandList.Close();
+        _commandList.Close();
     }
 
     private void CreateRenderTarget() {
         const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
-        D3D12_DESCRIPTOR_HEAP_DESC RTVHeapDesc = new() {
+        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = new() {
             NumDescriptors = FrameCount,
             Type = type,
         };
-        m_D3D12Device.CreateDescriptorHeap(RTVHeapDesc, out m_RTVHeap);
+        _d3d12Device.CreateDescriptorHeap(rtvHeapDesc, out _rtvHeap);
 
-        DXGI_SWAP_CHAIN_DESC1 swapchainDesc = new() {
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = new() {
             BufferCount = FrameCount,
             Width = WindowWidth,
             Height = WindowHeight,
@@ -164,82 +164,82 @@ internal unsafe class DX12Engine {
             },
         };
 
-        m_DXGIFactory.CreateSwapChainForHwnd(
-            m_CommandQueue,
-            m_hwnd,
-            swapchainDesc,
+        _dxgiFactory.CreateSwapChainForHwnd(
+            _commandQueue,
+            _hwnd,
+            swapChainDesc,
             null,
             null,
-            out var _temp_swapchain);
+            out var tempSwapChain);
 
         // CreateSwapChainForHwnd 不能直接用于创建高版本接口
-        m_DXGISwapChain = _temp_swapchain as IDXGISwapChain3;
+        _dxgiSwapChain = tempSwapChain as IDXGISwapChain3;
 
-        RTVHandle = m_RTVHeap.GetCPUDescriptorHandleForHeapStart();
-        RTVDescriptorSize = m_D3D12Device.GetDescriptorHandleIncrementSize(type);
+        _rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
+        _rtvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(type);
 
-        m_RenderTarget = new ComPtr<ID3D12Resource>[FrameCount];
+        _renderTargets = new ComPtr<ID3D12Resource>[FrameCount];
         for (uint i = 0; i < FrameCount; i++) {
-            m_DXGISwapChain.GetBuffer<ID3D12Resource>(i, out var resource);
-            m_RenderTarget[i] = new(resource);
+            _dxgiSwapChain.GetBuffer<ID3D12Resource>(i, out var resource);
+            _renderTargets[i] = new(resource);
 
-            m_D3D12Device.CreateRenderTargetView(m_RenderTarget[i].Managed, null, RTVHandle);
+            _d3d12Device.CreateRenderTargetView(_renderTargets[i].Managed, null, _rtvHandle);
 
-            RTVHandle.ptr += RTVDescriptorSize;
+            _rtvHandle.ptr += _rtvDescriptorSize;
         }
     }
 
     private void CreateFenceAndBarrier() {
-        RenderEvent = CreateEvent(null, false, true, null);
+        _renderEvent = CreateEvent(null, false, true, null);
 
-        m_D3D12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, out m_Fence);
+        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, out _fence);
 
         // 设置资源屏障
-        // beg_barrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
-        beg_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        beg_barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
-        beg_barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
+        // _beginBarrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
+        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
+        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        // end_barrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
-        end_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        end_barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
-        end_barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
+        // _endBarrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
+        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
     }
 
     private void Render() {
-        RTVHandle = m_RTVHeap.GetCPUDescriptorHandleForHeapStart();
-        FrameIndex = m_DXGISwapChain.GetCurrentBackBufferIndex();
-        RTVHandle.ptr += FrameIndex * RTVDescriptorSize;
+        _rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
+        _frameIndex = _dxgiSwapChain.GetCurrentBackBufferIndex();
+        _rtvHandle.ptr += _frameIndex * _rtvDescriptorSize;
 
-        m_CommandAllocator.Reset();
-        m_CommandList.Reset(m_CommandAllocator, null);
+        _commandAllocator.Reset();
+        _commandList.Reset(_commandAllocator, null);
 
-        beg_barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)m_RenderTarget[FrameIndex].Ptr;
-        m_CommandList.ResourceBarrier([beg_barrier]);
+        _beginBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _commandList.ResourceBarrier([_beginBarrier]);
 
-        m_CommandList.OMSetRenderTargets(1, RTVHandle, false, null);
-        m_CommandList.ClearRenderTargetView(RTVHandle, SkyBlue, 0, null);
+        _commandList.OMSetRenderTargets(1, _rtvHandle, false, null);
+        _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue, 0, null);
 
-        end_barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)m_RenderTarget[FrameIndex].Ptr;
-        m_CommandList.ResourceBarrier([end_barrier]);
+        _endBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _commandList.ResourceBarrier([_endBarrier]);
 
-        m_CommandList.Close();
+        _commandList.Close();
 
-        m_CommandQueue.ExecuteCommandLists([m_CommandList]);
+        _commandQueue.ExecuteCommandLists([_commandList]);
 
-        m_DXGISwapChain.Present(1, 0);
+        _dxgiSwapChain.Present(1, 0);
 
 
-        FenceValue++;
-        m_CommandQueue.Signal(m_Fence, FenceValue);
-        m_Fence.SetEventOnCompletion(FenceValue, RenderEvent);
+        _fenceValue++;
+        _commandQueue.Signal(_fence, _fenceValue);
+        _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
     private void RenderLoop() {
         bool exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
-                [new(RenderEvent.DangerousGetHandle())],
+                [new(_renderEvent.DangerousGetHandle())],
                 false,
                 INFINITE,
                 QUEUE_STATUS_FLAGS.QS_ALLINPUT);
@@ -268,7 +268,7 @@ internal unsafe class DX12Engine {
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
-    private static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
+    private static LRESULT WindowProc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
         switch (msg) {
             case WM_DESTROY:
                 PostQuitMessage(0);
@@ -280,9 +280,9 @@ internal unsafe class DX12Engine {
         return new(0);
     }
 
-    internal static void Run(SafeHandle hins) {
+    internal static void Run(SafeHandle hInstance) {
         DX12Engine engine = new();
-        engine.InitWindow(hins);
+        engine.InitWindow(hInstance);
         engine.CreateDebugDevice();
         engine.CreateDevice();
         engine.CreateCommandComponents();
