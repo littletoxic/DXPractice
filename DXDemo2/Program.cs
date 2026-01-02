@@ -9,7 +9,6 @@ using Windows.Win32.Graphics.Direct3D12;
 using Windows.Win32.Graphics.Dxgi;
 using Windows.Win32.Graphics.Dxgi.Common;
 using Windows.Win32.UI.WindowsAndMessaging;
-using WinRT;
 using static Windows.Win32.PInvoke;
 
 namespace DXDemo2;
@@ -43,7 +42,7 @@ internal unsafe class DX12Engine {
 
     private ID3D12DescriptorHeap m_RTVHeap;
     private IDXGISwapChain3 m_DXGISwapChain;
-    private ID3D12Resource[] m_RenderTarget;
+    private ComPtr<ID3D12Resource>[] m_RenderTarget;
     private D3D12_CPU_DESCRIPTOR_HANDLE RTVHandle;
     private uint RTVDescriptorSize = 0;
     private uint FrameIndex = 0;
@@ -91,16 +90,14 @@ internal unsafe class DX12Engine {
         // [STAThread] attribute on Main method handles this
         //CoInitialize();
 
-        D3D12GetDebugInterface(typeof(ID3D12Debug).GUID, out var ppvDebug);
-        m_D3D12DebugDevice = ppvDebug as ID3D12Debug;
+        D3D12GetDebugInterface(out m_D3D12DebugDevice);
         m_D3D12DebugDevice.EnableDebugLayer();
 
         m_DXGICreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
     }
 
     private bool CreateDevice() {
-        CreateDXGIFactory2(m_DXGICreateFactoryFlag, typeof(IDXGIFactory5).GUID, out var ppvFactory);
-        m_DXGIFactory = ppvFactory as IDXGIFactory5;
+        CreateDXGIFactory2(m_DXGICreateFactoryFlag, out m_DXGIFactory);
 
         // DX12 支持的所有功能版本，你的显卡最低需要支持 11.0
         D3D_FEATURE_LEVEL[] dx12SupportLevel = [
@@ -114,8 +111,7 @@ internal unsafe class DX12Engine {
         for (uint i = 0; m_DXGIFactory.EnumAdapters1(i, out m_DXGIAdapter) != HRESULT.DXGI_ERROR_NOT_FOUND; i++) {
             // 找到显卡，就创建 D3D12 设备，从高到低遍历所有功能版本，创建成功就跳出
             foreach (var level in dx12SupportLevel) {
-                if (D3D12CreateDevice(m_DXGIAdapter, level, typeof(ID3D12Device4).GUID, out var ppvDevice).Succeeded) {
-                    m_D3D12Device = ppvDevice as ID3D12Device4;
+                if (D3D12CreateDevice(m_DXGIAdapter, level, out m_D3D12Device).Succeeded) {
                     return true;
                 }
             }
@@ -132,20 +128,16 @@ internal unsafe class DX12Engine {
             Type = type,
         };
 
-        m_D3D12Device.CreateCommandQueue(queueDesc, typeof(ID3D12CommandQueue).GUID, out var ppCommandQueue);
-        m_CommandQueue = ppCommandQueue as ID3D12CommandQueue;
+        m_D3D12Device.CreateCommandQueue(queueDesc, out m_CommandQueue);
 
-        m_D3D12Device.CreateCommandAllocator(type, typeof(ID3D12CommandAllocator).GUID, out var ppCommandAllocator);
-        m_CommandAllocator = ppCommandAllocator as ID3D12CommandAllocator;
+        m_D3D12Device.CreateCommandAllocator(type, out m_CommandAllocator);
 
         m_D3D12Device.CreateCommandList(
             0,
             type,
             m_CommandAllocator,
             null,
-            typeof(ID3D12GraphicsCommandList).GUID,
-            out var ppCommandList);
-        m_CommandList = ppCommandList as ID3D12GraphicsCommandList;
+            out m_CommandList);
 
         m_CommandList.Close();
     }
@@ -157,8 +149,7 @@ internal unsafe class DX12Engine {
             NumDescriptors = FrameCount,
             Type = type,
         };
-        m_D3D12Device.CreateDescriptorHeap(RTVHeapDesc, typeof(ID3D12DescriptorHeap).GUID, out var ppRTVHeap);
-        m_RTVHeap = ppRTVHeap as ID3D12DescriptorHeap;
+        m_D3D12Device.CreateDescriptorHeap(RTVHeapDesc, out m_RTVHeap);
 
         DXGI_SWAP_CHAIN_DESC1 swapchainDesc = new() {
             BufferCount = FrameCount,
@@ -178,20 +169,20 @@ internal unsafe class DX12Engine {
             swapchainDesc,
             null,
             null,
-            out IDXGISwapChain1 _temp_swapchain);
+            out var _temp_swapchain);
 
         // CreateSwapChainForHwnd 不能直接用于创建高版本接口
-        m_DXGISwapChain = _temp_swapchain.As<IDXGISwapChain3>();
+        m_DXGISwapChain = _temp_swapchain as IDXGISwapChain3;
 
         RTVHandle = m_RTVHeap.GetCPUDescriptorHandleForHeapStart();
         RTVDescriptorSize = m_D3D12Device.GetDescriptorHandleIncrementSize(type);
 
-        m_RenderTarget = new ID3D12Resource[FrameCount];
+        m_RenderTarget = new ComPtr<ID3D12Resource>[FrameCount];
         for (uint i = 0; i < FrameCount; i++) {
-            m_DXGISwapChain.GetBuffer(i, typeof(ID3D12Resource).GUID, out var ppRenderTarget);
-            m_RenderTarget[i] = ppRenderTarget as ID3D12Resource;
+            m_DXGISwapChain.GetBuffer<ID3D12Resource>(i, out var resource);
+            m_RenderTarget[i] = new(resource);
 
-            m_D3D12Device.CreateRenderTargetView(m_RenderTarget[i], null, RTVHandle);
+            m_D3D12Device.CreateRenderTargetView(m_RenderTarget[i].Managed, null, RTVHandle);
 
             RTVHandle.ptr += RTVDescriptorSize;
         }
@@ -200,8 +191,7 @@ internal unsafe class DX12Engine {
     private void CreateFenceAndBarrier() {
         RenderEvent = CreateEvent(null, false, true, null);
 
-        m_D3D12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, typeof(ID3D12Fence).GUID, out var ppFence);
-        m_Fence = ppFence as ID3D12Fence;
+        m_D3D12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, out m_Fence);
 
         // 设置资源屏障
         // beg_barrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
@@ -223,18 +213,14 @@ internal unsafe class DX12Engine {
         m_CommandAllocator.Reset();
         m_CommandList.Reset(m_CommandAllocator, null);
 
-        using (var pResource = new ComPtr<ID3D12Resource>(m_RenderTarget[FrameIndex])) {
-            beg_barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)pResource.Ptr;
-            m_CommandList.ResourceBarrier([beg_barrier]);
-        }
+        beg_barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)m_RenderTarget[FrameIndex].Ptr;
+        m_CommandList.ResourceBarrier([beg_barrier]);
 
         m_CommandList.OMSetRenderTargets(1, RTVHandle, false, null);
         m_CommandList.ClearRenderTargetView(RTVHandle, SkyBlue, 0, null);
 
-        using (var pResource0 = new ComPtr<ID3D12Resource>(m_RenderTarget[FrameIndex])) {
-            end_barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)pResource0.Ptr;
-            m_CommandList.ResourceBarrier([end_barrier]);
-        }
+        end_barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)m_RenderTarget[FrameIndex].Ptr;
+        m_CommandList.ResourceBarrier([end_barrier]);
 
         m_CommandList.Close();
 
@@ -307,10 +293,55 @@ internal unsafe class DX12Engine {
 
 }
 
-internal unsafe readonly struct ComPtr<T>(T managed) : IDisposable {
-    public void* Ptr { get; } = ComInterfaceMarshaller<T>.ConvertToUnmanaged(managed);
+internal unsafe sealed class ComPtr<T>(T managed) : IDisposable {
+    public T Managed { get; } = managed;
+    public void* Ptr { get; private set; } = ComInterfaceMarshaller<T>.ConvertToUnmanaged(managed);
+    private bool disposed = false;
 
     public void Dispose() {
+        if (disposed)
+            return;
+
         ComInterfaceMarshaller<T>.Free(Ptr);
+        disposed = true;
+        GC.SuppressFinalize(this);
+    }
+
+    ~ComPtr() {
+        Dispose();
+    }
+}
+
+internal static class Extensions {
+    // ID3D12Device 实例扩展
+    public static void CreateCommandQueue<T>(this ID3D12Device device, in D3D12_COMMAND_QUEUE_DESC desc, out T ppCommandQueue) where T : class, ID3D12CommandQueue {
+        device.CreateCommandQueue(desc, typeof(T).GUID, out var result);
+        ppCommandQueue = result as T;
+    }
+
+    public static void CreateCommandAllocator<T>(this ID3D12Device device, D3D12_COMMAND_LIST_TYPE type, out T ppCommandAllocator) where T : class, ID3D12CommandAllocator {
+        device.CreateCommandAllocator(type, typeof(T).GUID, out var result);
+        ppCommandAllocator = result as T;
+    }
+
+    public static void CreateCommandList<T>(this ID3D12Device device, uint nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator allocator, ID3D12PipelineState pipelineState, out T ppCommandList) where T : class, ID3D12CommandList {
+        device.CreateCommandList(nodeMask, type, allocator, pipelineState, typeof(T).GUID, out var result);
+        ppCommandList = result as T;
+    }
+
+    public static void CreateDescriptorHeap<T>(this ID3D12Device device, in D3D12_DESCRIPTOR_HEAP_DESC desc, out T ppDescriptorHeap) where T : class, ID3D12DescriptorHeap {
+        device.CreateDescriptorHeap(desc, typeof(T).GUID, out var result);
+        ppDescriptorHeap = result as T;
+    }
+
+    public static void CreateFence<T>(this ID3D12Device device, ulong initialValue, D3D12_FENCE_FLAGS flags, out T ppFence) where T : class, ID3D12Fence {
+        device.CreateFence(initialValue, flags, typeof(T).GUID, out var result);
+        ppFence = result as T;
+    }
+
+    // IDXGISwapChain 实例扩展
+    public static void GetBuffer<T>(this IDXGISwapChain swapChain, uint buffer, out T ppSurface) where T : class, ID3D12Resource {
+        swapChain.GetBuffer(buffer, typeof(T).GUID, out var result);
+        ppSurface = result as T;
     }
 }
