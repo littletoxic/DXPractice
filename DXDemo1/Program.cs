@@ -9,7 +9,7 @@ namespace DXDemo1;
 internal static class Program {
     [STAThread]
     static void Main() {
-        var hInstance = GetModuleHandle();
+        using var hInstance = GetModuleHandle();
 
         DX12Engine.Run(hInstance);
     }
@@ -21,12 +21,12 @@ internal class DX12Engine {
 
     private HWND hwnd;
 
-    private unsafe void InitWindow(HINSTANCE hins) {
+    private unsafe void InitWindow(SafeHandle hins) {
         const string className = "DX12 Game";
 
         fixed (char* pClassName = className) {
             WNDCLASSW wc = new() {
-                hInstance = hins,
+                hInstance = new(hins.DangerousGetHandle()),
                 lpfnWndProc = &CallBackFunc,
                 lpszClassName = pClassName,
             };
@@ -44,7 +44,7 @@ internal class DX12Engine {
             WindowWidth,
             WindowHeight,
             HWND.Null,
-            HMENU.Null,
+            null,
             hins,
             null);
 
@@ -81,7 +81,7 @@ internal class DX12Engine {
     }
 
 
-    internal static void Run(HINSTANCE hins) {
+    internal static void Run(SafeHandle hins) {
         DX12Engine engine = new();
         engine.InitWindow(hins);
         engine.RenderLoop();
