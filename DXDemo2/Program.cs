@@ -16,7 +16,7 @@ namespace DXDemo2;
 internal static class Program {
     [STAThread]
     static void Main() {
-        var hInstance = GetModuleHandle();
+        using var hInstance = GetModuleHandle();
 
         DX12Engine.Run(hInstance);
     }
@@ -49,18 +49,18 @@ internal unsafe class DX12Engine {
 
     private ID3D12Fence m_Fence;
     ulong FenceValue = 0;
-    HANDLE RenderEvent;
+    SafeHandle RenderEvent;
     D3D12_RESOURCE_BARRIER beg_barrier;
     D3D12_RESOURCE_BARRIER end_barrier;
 
     private readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
 
-    private void InitWindow(HINSTANCE hins) {
+    private void InitWindow(SafeHandle hins) {
         const string className = "DX12 Game";
 
         fixed (char* pClassName = className) {
             WNDCLASSW wc = new() {
-                hInstance = hins,
+                hInstance = new(hins.DangerousGetHandle()),
                 lpfnWndProc = &CallBackFunc,
                 lpszClassName = pClassName,
             };
@@ -78,7 +78,7 @@ internal unsafe class DX12Engine {
             WindowWidth,
             WindowHeight,
             HWND.Null,
-            HMENU.Null,
+            null,
             hins,
             null);
 
@@ -238,7 +238,7 @@ internal unsafe class DX12Engine {
         bool exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
-                [RenderEvent],
+                [new(RenderEvent.DangerousGetHandle())],
                 false,
                 INFINITE,
                 QUEUE_STATUS_FLAGS.QS_ALLINPUT);
@@ -279,7 +279,7 @@ internal unsafe class DX12Engine {
         return new(0);
     }
 
-    internal static void Run(HINSTANCE hins) {
+    internal static void Run(SafeHandle hins) {
         DX12Engine engine = new();
         engine.InitWindow(hins);
         engine.CreateDebugDevice();
