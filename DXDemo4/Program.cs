@@ -358,8 +358,8 @@ internal class DX12Engine {
                null,
                GENERIC_ACCESS_RIGHTS.GENERIC_READ,
                WICDecodeOptions.WICDecodeMetadataCacheOnLoad);
-        } catch (COMException ex) {
-            MessageBox(default, $"{ex.Message}，错误码：{ex.HResult}", "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
+        } catch (Exception ex) {
+            MessageBox(default, ex.Message, "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
             return false;
         }
 
