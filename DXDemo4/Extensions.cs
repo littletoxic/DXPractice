@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using Windows.Win32.Foundation;
@@ -84,19 +85,14 @@ internal static class Extensions {
     }
 
     internal static unsafe void CreateCommittedResource<T>(this ID3D12Device @this, in D3D12_HEAP_PROPERTIES pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, in D3D12_RESOURCE_DESC pDesc, D3D12_RESOURCE_STATES InitialResourceState, [Optional] D3D12_CLEAR_VALUE? pOptimizedClearValue, out T resource) where T : class, ID3D12Resource {
-        var riidResource = typeof(T).GUID;
+        @this.CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState, pOptimizedClearValue, typeof(T).GUID, out object result);
+        resource = result as T;
+    }
 
-        resource = null;
-        void* __ppvResource_native = default;
+    private static unsafe void CreateCommittedResource(this ID3D12Device @this, in D3D12_HEAP_PROPERTIES pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, in D3D12_RESOURCE_DESC pDesc, D3D12_RESOURCE_STATES InitialResourceState, [Optional] D3D12_CLEAR_VALUE? pOptimizedClearValue, in Guid riidResource, out object resource) {
+        @this.CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState, pOptimizedClearValue, riidResource, out void* __ppvResource_native);
 
-        fixed (D3D12_RESOURCE_DESC* pDescLocal = &pDesc) {
-            fixed (D3D12_HEAP_PROPERTIES* pHeapPropertiesLocal = &pHeapProperties) {
-                D3D12_CLEAR_VALUE pOptimizedClearValueLocal = pOptimizedClearValue ?? default;
-                @this.CreateCommittedResource(pHeapPropertiesLocal, HeapFlags, pDescLocal, InitialResourceState, pOptimizedClearValue.HasValue ? &pOptimizedClearValueLocal : null, &riidResource, &__ppvResource_native);
-            }
-        }
-
-        resource = ComInterfaceMarshaller<T>.ConvertToManaged(__ppvResource_native);
+        resource = ComInterfaceMarshaller<object>.ConvertToManaged(__ppvResource_native);
         ComInterfaceMarshaller<object>.Free(__ppvResource_native);
     }
 
