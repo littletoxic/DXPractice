@@ -5,4 +5,5 @@
   <Project Path="DXDemo1/DXDemo1.csproj" Id="d9b1b87e-5f14-41eb-b347-efda3bf8b779" />
   <Project Path="DXDemo2/DXDemo2.csproj" Id="e073df7c-e097-45bf-8bf3-ec24d28f09e7" />
   <Project Path="DXDemo3/DXDemo3.csproj" Id="f2250d61-bfb8-4a6c-9c2b-6f3e4cd5f7b6" />
+  <Project Path="DXDemo4/DXDemo4.csproj" Id="f68cb0b8-b66f-4004-a2da-b959e9f66392" />
 </Solution>
