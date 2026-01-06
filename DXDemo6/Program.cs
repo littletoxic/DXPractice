@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Collections.Frozen;
 using System.Diagnostics;
+using System.Drawing;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -12,10 +13,11 @@ using Windows.Win32.Graphics.Dxgi;
 using Windows.Win32.Graphics.Dxgi.Common;
 using Windows.Win32.Graphics.Imaging;
 using Windows.Win32.System.Com;
+using Windows.Win32.System.SystemServices;
 using Windows.Win32.UI.WindowsAndMessaging;
 using static Windows.Win32.PInvoke;
 
-namespace DXDemo5;
+namespace DXDemo6;
 
 internal static class DX12TextureHelper {
 
@@ -100,6 +102,110 @@ internal static class DX12TextureHelper {
     internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT.DXGI_FORMAT_UNKNOWN;
 }
 
+internal static class CallBackWrapper {
+
+    internal static Func<HWND, uint, WPARAM, LPARAM, LRESULT> BrokerFunc;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
+        return BrokerFunc(hwnd, msg, wParam, lParam);
+    }
+}
+
+internal class Camera {
+    private Vector3 _eyePosition;    // 摄像机在世界空间下的位置
+    private Vector3 _focusPosition;  // 摄像机在世界空间下观察的焦点位置
+    private Vector3 _upDirection;    // 世界空间垂直向上的向量
+
+    // 摄像机观察方向的单位向量，用于前后移动
+    private Vector3 _viewDirection;
+
+    // 焦距，摄像机原点与焦点的距离
+    private readonly float _focalLength;
+
+    // 摄像机向右方向的单位向量，用于左右移动
+    private Vector3 _rightDirection;
+
+    private Point _lastCursorPoint;         // 上一次鼠标的位置
+
+    private static readonly float FovAngleY = XM_PIDIV4;   // 垂直视场角
+    private static readonly float AspectRatio = 4f / 3f;   // 投影窗口宽高比
+    private static readonly float NearZ = 0.1f;            // 近平面到原点的距离
+    private static readonly float FarZ = 1000f;            // 远平面到原点的距离
+
+    // 模型矩阵，这里我们让模型旋转 30° 就行，注意这里只是一个示例，后文我们会将它移除，每个模型都应该拥有相对独立的模型矩阵
+    internal static Matrix4x4 ModelMatrix = Matrix4x4.CreateRotationY(30.0f);  // 模型矩阵，模型空间 -> 世界空间
+    // 观察矩阵，注意前两个参数是点，第三个参数才是向量
+    internal Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
+    // 投影矩阵(注意近平面和远平面距离不能 <= 0!)
+    internal static Matrix4x4 ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
+
+    internal Matrix4x4 MVPMatrix => ModelMatrix * ViewMatrix * ProjectionMatrix; // MVP 矩阵
+
+    internal Camera() {
+        _eyePosition = new Vector3(4, 3, 4);
+        _focusPosition = new Vector3(0, 1, 1);
+        _upDirection = new Vector3(0, 1, 0);
+
+        _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
+        _focalLength = Vector3.Distance(_focusPosition, _eyePosition);
+        _rightDirection = Vector3.Normalize(Vector3.Cross(_viewDirection, _upDirection));
+    }
+
+    // 摄像机前后移动，参数 Stride 是移动速度 (步长)，正数向前移动，负数向后移动
+    internal void Walk(float stride) {
+        _eyePosition += stride * _viewDirection;
+        _focusPosition += stride * _viewDirection;
+    }
+
+    // 摄像机左右移动，参数 Stride 是移动速度 (步长)，正数向左移动，负数向右移动
+    internal void Strafe(float stride) {
+        _eyePosition += stride * _rightDirection;
+        _focusPosition += stride * _rightDirection;
+    }
+
+    // 鼠标在屏幕空间 y 轴上移动，相当于摄像机以向右的向量 RightDirection 向上向下旋转，人眼往上下看
+    internal void RotateByY(float angleY) {
+        var r = Matrix4x4.CreateFromAxisAngle(_rightDirection, -angleY);
+
+        _upDirection = Vector3.TransformNormal(_upDirection, r);
+        _viewDirection = Vector3.TransformNormal(_viewDirection, r);
+
+        _focusPosition = _eyePosition + _focalLength * _viewDirection;
+    }
+
+    // 鼠标在屏幕空间 x 轴上移动，相当于摄像机绕世界空间的 y 轴向左向右旋转，人眼往左右看
+    internal void RotateByX(float angleX) {
+        var r = Matrix4x4.CreateRotationY(angleX);
+
+        _upDirection = Vector3.TransformNormal(_upDirection, r);
+        _viewDirection = Vector3.TransformNormal(_viewDirection, r);
+        _rightDirection = Vector3.TransformNormal(_rightDirection, r);
+
+        _focusPosition = _eyePosition + _focalLength * _viewDirection;
+    }
+
+    internal void UpdateLastCursorPos() {
+        GetCursorPos(out _lastCursorPoint);
+    }
+
+    // 当鼠标左键长按并移动时，旋转摄像机视角
+    internal void CameraRotate() {
+        GetCursorPos(out var currentCursorPoint);
+
+        float deltaX = currentCursorPoint.X - _lastCursorPoint.X;
+        float deltaY = currentCursorPoint.Y - _lastCursorPoint.Y;
+
+        float angleX = deltaX * (MathF.PI / 180.0f) * 0.25f;
+        float angleY = deltaY * (MathF.PI / 180.0f) * 0.25f;
+
+        RotateByY(angleY);
+        RotateByX(angleX);
+
+        UpdateLastCursorPos();
+    }
+}
+
 internal class DX12Engine {
 
     private const int FrameCount = 3;
@@ -109,7 +215,6 @@ internal class DX12Engine {
     private static readonly float[] Yellow = [1f, 1f, 0f, 1f];
     private static readonly float[] Blue = [0f, 0f, 1f, 1f];
 
-    private const float XM_PIDIV4 = 0.785398163f;
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
     private static readonly D3D_FEATURE_LEVEL[] DX12SupportLevels = [
@@ -176,7 +281,7 @@ internal class DX12Engine {
         internal Matrix4x4 MVPMatrix;
     }
     private ID3D12Resource _cbvResource;
-    private nint _mvpBuffer;
+    private nint mvpBuffer;
 
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
@@ -192,12 +297,7 @@ internal class DX12Engine {
     private ID3D12Resource _indexResource;
     private D3D12_INDEX_BUFFER_VIEW _indexBufferView;
 
-    private static readonly Vector4 EyePosition = new(4, 3, 4, 1);
-    private static readonly Vector4 FocusPosition = new(0, 1, 1, 1);
-    private static readonly Vector4 UpDirection = new(0, 1, 0, 0);
-    private Matrix4x4 _modelMatrix;
-    private Matrix4x4 _viewMatrix;
-    private Matrix4x4 _projectionMatrix;
+    private readonly Camera firstCamera = new();
 
     private D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
@@ -224,9 +324,11 @@ internal class DX12Engine {
 
         WNDCLASSW wc = new() {
             hInstance = new(hInstance.DangerousGetHandle()),
-            lpfnWndProc = &WindowProc,
+            lpfnWndProc = &CallBackWrapper.CallBackFunc,
             lpszClassName = pClassName,
         };
+
+        CallBackWrapper.BrokerFunc = CallBackFunc;
 
         RegisterClass(wc);
 
@@ -580,7 +682,7 @@ internal class DX12Engine {
             out _cbvResource);
 
         _cbvResource.Map(0, null, out var cbvPointer);
-        _mvpBuffer = (nint)cbvPointer;
+        mvpBuffer = (nint)cbvPointer;
     }
 
     private unsafe void CreateRootSignature() {
@@ -886,11 +988,7 @@ internal class DX12Engine {
     }
 
     private unsafe void UpdateConstantBuffer() {
-        _modelMatrix = Matrix4x4.CreateRotationY(30.0f);
-        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(EyePosition.AsVector3(), FocusPosition.AsVector3(), UpDirection.AsVector3());
-        _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(XM_PIDIV4, 4.0f / 3, 0.1f, 1000);
-
-        Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _modelMatrix * _viewMatrix * _projectionMatrix;
+        Unsafe.AsRef<CBuffer>((void*)mvpBuffer).MVPMatrix = firstCamera.MVPMatrix;
     }
 
     private unsafe void Render() {
@@ -979,12 +1077,49 @@ internal class DX12Engine {
         }
     }
 
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
-    private static LRESULT WindowProc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
+    private LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
         switch (msg) {
             case WM_DESTROY:
                 PostQuitMessage(0);
                 break;
+
+            case WM_CHAR:
+                var ch = (char)wParam;
+                switch (ch) {
+                    case 'w':
+                    case 'W':
+                        firstCamera.Walk(0.1f);
+                        break;
+
+                    case 's':
+                    case 'S':
+                        firstCamera.Walk(-0.1f);
+                        break;
+
+                    case 'a':
+                    case 'A':
+                        firstCamera.Strafe(0.1f);
+                        break;
+
+                    case 'd':
+                    case 'D':
+                        firstCamera.Strafe(-0.1f);
+                        break;
+                }
+                break;
+
+            case WM_MOUSEMOVE:
+                var mouse = (MODIFIERKEYS_FLAGS)wParam.Value;
+                switch (mouse) {
+                    case MODIFIERKEYS_FLAGS.MK_LBUTTON:
+                        firstCamera.CameraRotate();
+                        break;
+                    default:
+                        firstCamera.UpdateLastCursorPos();
+                        break;
+                }
+                break;
+
             default:
                 return DefWindowProc(hwnd, msg, wParam, lParam);
         }
