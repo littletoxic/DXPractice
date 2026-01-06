@@ -104,7 +104,7 @@ internal static class DX12TextureHelper {
 
 internal static class CallBackWrapper {
 
-    internal static Func<HWND, uint, WPARAM, LPARAM, LRESULT> BrokerFunc;
+    internal static Func<HWND, uint, WPARAM, LPARAM, LRESULT> BrokerFunc { get; set; }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
     internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
@@ -134,15 +134,24 @@ internal class Camera {
     private static readonly float FarZ = 1000f;            // 远平面到原点的距离
 
     // 模型矩阵，这里我们让模型旋转 30° 就行，注意这里只是一个示例，后文我们会将它移除，每个模型都应该拥有相对独立的模型矩阵
-    internal static Matrix4x4 ModelMatrix = Matrix4x4.CreateRotationY(30.0f);  // 模型矩阵，模型空间 -> 世界空间
+    private Matrix4x4 _modelMatrix;
     // 观察矩阵，注意前两个参数是点，第三个参数才是向量
-    internal Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
+    private Matrix4x4 _viewMatrix;
     // 投影矩阵(注意近平面和远平面距离不能 <= 0!)
-    internal static Matrix4x4 ProjectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
+    private Matrix4x4 _projectionMatrix;
 
-    internal Matrix4x4 MVPMatrix => ModelMatrix * ViewMatrix * ProjectionMatrix; // MVP 矩阵
+    internal Matrix4x4 MVPMatrix {
+        get {
+            _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
+            return _modelMatrix * _viewMatrix * _projectionMatrix; // MVP 矩阵
+        }
+    }
 
     internal Camera() {
+        _modelMatrix = Matrix4x4.CreateRotationY(30.0f);  // 模型矩阵，模型空间 -> 世界空间
+        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
+        _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
+
         _eyePosition = new Vector3(4, 3, 4);
         _focusPosition = new Vector3(0, 1, 1);
         _upDirection = new Vector3(0, 1, 0);
@@ -165,7 +174,7 @@ internal class Camera {
     }
 
     // 鼠标在屏幕空间 y 轴上移动，相当于摄像机以向右的向量 RightDirection 向上向下旋转，人眼往上下看
-    internal void RotateByY(float angleY) {
+    private void RotateByY(float angleY) {
         var r = Matrix4x4.CreateFromAxisAngle(_rightDirection, -angleY);
 
         _upDirection = Vector3.TransformNormal(_upDirection, r);
@@ -175,7 +184,7 @@ internal class Camera {
     }
 
     // 鼠标在屏幕空间 x 轴上移动，相当于摄像机绕世界空间的 y 轴向左向右旋转，人眼往左右看
-    internal void RotateByX(float angleX) {
+    private void RotateByX(float angleX) {
         var r = Matrix4x4.CreateRotationY(angleX);
 
         _upDirection = Vector3.TransformNormal(_upDirection, r);
@@ -297,7 +306,7 @@ internal class DX12Engine {
     private ID3D12Resource _indexResource;
     private D3D12_INDEX_BUFFER_VIEW _indexBufferView;
 
-    private readonly Camera firstCamera = new();
+    private readonly Camera _firstCamera = new();
 
     private D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
@@ -988,7 +997,7 @@ internal class DX12Engine {
     }
 
     private unsafe void UpdateConstantBuffer() {
-        Unsafe.AsRef<CBuffer>((void*)mvpBuffer).MVPMatrix = firstCamera.MVPMatrix;
+        Unsafe.AsRef<CBuffer>((void*)mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
     }
 
     private unsafe void Render() {
@@ -1088,22 +1097,22 @@ internal class DX12Engine {
                 switch (ch) {
                     case 'w':
                     case 'W':
-                        firstCamera.Walk(0.1f);
+                        _firstCamera.Walk(0.1f);
                         break;
 
                     case 's':
                     case 'S':
-                        firstCamera.Walk(-0.1f);
+                        _firstCamera.Walk(-0.1f);
                         break;
 
                     case 'a':
                     case 'A':
-                        firstCamera.Strafe(0.1f);
+                        _firstCamera.Strafe(0.1f);
                         break;
 
                     case 'd':
                     case 'D':
-                        firstCamera.Strafe(-0.1f);
+                        _firstCamera.Strafe(-0.1f);
                         break;
                 }
                 break;
@@ -1112,10 +1121,10 @@ internal class DX12Engine {
                 var mouse = (MODIFIERKEYS_FLAGS)wParam.Value;
                 switch (mouse) {
                     case MODIFIERKEYS_FLAGS.MK_LBUTTON:
-                        firstCamera.CameraRotate();
+                        _firstCamera.CameraRotate();
                         break;
                     default:
-                        firstCamera.UpdateLastCursorPos();
+                        _firstCamera.UpdateLastCursorPos();
                         break;
                 }
                 break;
