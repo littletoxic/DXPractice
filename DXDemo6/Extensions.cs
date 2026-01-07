@@ -27,10 +27,10 @@ internal static partial class PInvoke {
     }
 }
 
-internal unsafe sealed class ComPtr<T>(T managed) : IDisposable {
+internal sealed unsafe class ComPtr<T>(T managed) : IDisposable {
     public T Managed { get; } = managed;
     public void* Ptr { get; private set; } = ComInterfaceMarshaller<T>.ConvertToUnmanaged(managed);
-    private bool _disposed = false;
+    private bool _disposed;
 
     public void Dispose() {
         if (_disposed)
@@ -73,7 +73,7 @@ internal static class Extensions {
         fence = result as T;
     }
 
-    internal unsafe static void CreateRootSignature<T>(this ID3D12Device device, uint nodeMask, void* pBlobWithRootSignature, nuint blobLengthInBytes, out T fence) where T : class, ID3D12RootSignature {
+    internal static unsafe void CreateRootSignature<T>(this ID3D12Device device, uint nodeMask, void* pBlobWithRootSignature, nuint blobLengthInBytes, out T fence) where T : class, ID3D12RootSignature {
         device.CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, typeof(T).GUID, out var result);
         fence = result as T;
     }
