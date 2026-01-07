@@ -15,7 +15,7 @@ internal static class Program {
     }
 
 }
-internal class DX12Engine {
+internal sealed class DX12Engine {
     private const int WindowWidth = 640;
     private const int WindowHeight = 480;
 

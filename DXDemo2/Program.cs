@@ -21,7 +21,7 @@ internal static class Program {
     }
 
 }
-internal unsafe class DX12Engine {
+internal sealed unsafe class DX12Engine {
     private const int WindowWidth = 640;
     private const int WindowHeight = 480;
     private const int FrameCount = 3;
@@ -43,11 +43,11 @@ internal unsafe class DX12Engine {
     private IDXGISwapChain3 _dxgiSwapChain;
     private ComPtr<ID3D12Resource>[] _renderTargets;
     private D3D12_CPU_DESCRIPTOR_HANDLE _rtvHandle;
-    private uint _rtvDescriptorSize = 0;
-    private uint _frameIndex = 0;
+    private uint _rtvDescriptorSize;
+    private uint _frameIndex;
 
     private ID3D12Fence _fence;
-    private ulong _fenceValue = 0;
+    private ulong _fenceValue;
     private SafeHandle _renderEvent;
     private D3D12_RESOURCE_BARRIER _beginBarrier;
     private D3D12_RESOURCE_BARRIER _endBarrier;

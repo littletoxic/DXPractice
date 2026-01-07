@@ -112,7 +112,7 @@ internal static class CallBackWrapper {
     }
 }
 
-internal class Camera {
+internal sealed class Camera {
     private Vector3 _eyePosition;    // 摄像机在世界空间下的位置
     private Vector3 _focusPosition;  // 摄像机在世界空间下观察的焦点位置
     private Vector3 _upDirection;    // 世界空间垂直向上的向量
@@ -231,7 +231,7 @@ internal abstract class Model {
     protected D3D12_VERTEX_BUFFER_VIEW[] _vertexBufferView = new D3D12_VERTEX_BUFFER_VIEW[2];
 
     // 每个模型的 IBV 顶点索引描述符，一个模型只有一个索引描述符
-    protected D3D12_INDEX_BUFFER_VIEW _indexBufferView = new();
+    protected D3D12_INDEX_BUFFER_VIEW _indexBufferView;
 
     // 纹理名 - GPU 句柄映射表，用于索引纹理，设置根参数
     protected Dictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> _textureGPUHandleMap = [];
@@ -523,7 +523,7 @@ internal abstract class SoildStair : Model {
     }
 }
 
-internal class Dirt : SoildBlock {
+internal sealed class Dirt : SoildBlock {
 
     public Dirt() {
         SetTextureGPUHandle("dirt");
@@ -539,7 +539,7 @@ internal class Dirt : SoildBlock {
     }
 }
 
-internal class PlanksOak : SoildBlock {
+internal sealed class PlanksOak : SoildBlock {
 
     public PlanksOak() {
         SetTextureGPUHandle("planks_oak");
@@ -555,7 +555,7 @@ internal class PlanksOak : SoildBlock {
     }
 }
 
-internal class Furnace : SoildBlock {
+internal sealed class Furnace : SoildBlock {
 
     public Furnace() {
         SetTextureGPUHandle("furnace_front_off");
@@ -581,7 +581,7 @@ internal class Furnace : SoildBlock {
     }
 }
 
-internal class CraftingTable : SoildBlock {
+internal sealed class CraftingTable : SoildBlock {
 
     public CraftingTable() {
         SetTextureGPUHandle("crafting_table_front");
@@ -607,7 +607,7 @@ internal class CraftingTable : SoildBlock {
     }
 }
 
-internal class LogOak : SoildBlock {
+internal sealed class LogOak : SoildBlock {
 
     public LogOak() {
         SetTextureGPUHandle("log_oak");
@@ -629,7 +629,7 @@ internal class LogOak : SoildBlock {
     }
 }
 
-internal class Grass : SoildBlock {
+internal sealed class Grass : SoildBlock {
 
     public Grass() {
         SetTextureGPUHandle("grass_side");
@@ -656,7 +656,7 @@ internal class Grass : SoildBlock {
     }
 }
 
-internal class PlanksOakSoildStair : SoildStair {
+internal sealed class PlanksOakSoildStair : SoildStair {
 
     public PlanksOakSoildStair() {
         SetTextureGPUHandle("planks_oak");
@@ -672,7 +672,7 @@ internal class PlanksOakSoildStair : SoildStair {
     }
 }
 
-internal class TextureMapInfo {
+internal sealed class TextureMapInfo {
     public string TextureFilePath { get; set; }
     public ComPtr<ID3D12Resource> DefaultHeapTextureResource { get; set; }
     public ComPtr<ID3D12Resource> UploadHeapTextureResource { get; set; }
@@ -680,7 +680,7 @@ internal class TextureMapInfo {
     public D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle { get; set; }
 }
 
-internal class ModelManager {
+internal sealed class ModelManager {
 
     private readonly Dictionary<string, TextureMapInfo> _textureSRVMap = [];
     private readonly List<Model> _modelGroup = [];
@@ -1043,7 +1043,7 @@ internal class ModelManager {
     }
 }
 
-internal class DX12Engine {
+internal sealed class DX12Engine {
 
     private const int FrameCount = 3;
     private static readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
@@ -1082,11 +1082,11 @@ internal class DX12Engine {
     private IDXGISwapChain3 _dxgiSwapChain;
     private ComPtr<ID3D12Resource>[] _renderTargets;
     private D3D12_CPU_DESCRIPTOR_HANDLE _rtvHandle;
-    private uint _rtvDescriptorSize = 0;
-    private uint _frameIndex = 0;
+    private uint _rtvDescriptorSize;
+    private uint _frameIndex;
 
     private ID3D12Fence _fence;
-    private ulong _fenceValue = 0;
+    private ulong _fenceValue;
     private SafeHandle _renderEvent;
     private D3D12_RESOURCE_BARRIER _beginBarrier;
     private D3D12_RESOURCE_BARRIER _endBarrier;
@@ -1098,17 +1098,17 @@ internal class DX12Engine {
     private IWICFormatConverter _wicFormatConverter;
     private IWICBitmapSource _wicBitmapSource;
     private DXGI_FORMAT _textureFormat = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN;
-    private uint _textureWidth = 0;
-    private uint _textureHeight = 0;
-    private uint _bitsPerPixel = 0;
+    private uint _textureWidth;
+    private uint _textureHeight;
+    private uint _bitsPerPixel;
 
     private readonly ModelManager _modelManager = new();
     private ID3D12DescriptorHeap _srvHeap;
 
-    private uint _bytesPerRowSize = 0;
-    private uint _textureSize = 0;
-    private uint _uploadResourceRowSize = 0;
-    private uint _uploadResourceSize = 0;
+    private uint _bytesPerRowSize;
+    private uint _textureSize;
+    private uint _uploadResourceRowSize;
+    private uint _uploadResourceSize;
 
     private struct CBuffer {
         internal Matrix4x4 MVPMatrix;
