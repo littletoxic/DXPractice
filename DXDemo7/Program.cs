@@ -17,7 +17,7 @@ using Windows.Win32.System.SystemServices;
 using Windows.Win32.UI.WindowsAndMessaging;
 using static Windows.Win32.PInvoke;
 
-namespace DXDemo6;
+namespace DXDemo7;
 
 internal static class DX12TextureHelper {
 
@@ -215,6 +215,834 @@ internal class Camera {
     }
 }
 
+internal struct Vertex {
+    internal Vector4 Position;
+    internal Vector2 TexCoordUV;
+}
+
+internal abstract class Model {
+    protected ID3D12Resource _vertexResource;
+    protected ID3D12Resource _modelMatrixResource;
+    protected ID3D12Resource _indexResource;
+
+    // 每个模型的 VBV 顶点信息描述符数组，数组每个元素占用一个输入槽，多槽输入可以加速 CPU-GPU 的传递
+    // VertexBufferView[0] 描述每个顶点的顶点信息 (position 位置，texcoordUV 纹理 UV 坐标)
+    // VertexBufferView[1] 描述每个顶点对应的模型矩阵，模型矩阵会在 IA 阶段拆分成四个行向量进行输入，之后在 VS 阶段重新组装成矩阵
+    protected D3D12_VERTEX_BUFFER_VIEW[] _vertexBufferView = new D3D12_VERTEX_BUFFER_VIEW[2];
+
+    // 每个模型的 IBV 顶点索引描述符，一个模型只有一个索引描述符
+    protected D3D12_INDEX_BUFFER_VIEW _indexBufferView = new();
+
+    // 纹理名 - GPU 句柄映射表，用于索引纹理，设置根参数
+    protected Dictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> _textureGPUHandleMap = [];
+
+    public IReadOnlyDictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> TextureGPUHandleMap => _textureGPUHandleMap;
+
+    public void SetTextureGPUHandle(string textureName, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = default) {
+        _textureGPUHandleMap[textureName] = gpuHandle;
+    }
+
+    public Matrix4x4 ModelMatrix { get; set; } = Matrix4x4.Identity;
+
+    public abstract void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device);
+
+    public abstract void DrawModel(ID3D12GraphicsCommandList commandList);
+
+    protected static unsafe void MapWriteUnmap<T>(ID3D12Resource resource, params ReadOnlySpan<T> data) where T : unmanaged {
+        resource.Map(0, null, out var transmitPointer);
+
+        data.CopyTo(new(transmitPointer, data.Length));
+
+        resource.Unmap(0, default(D3D12_RANGE?));
+    }
+}
+
+internal abstract class SoildBlock : Model {
+    protected static Vertex[] VertexArray = [
+        // 正面
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(2, 2, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(2, 0, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 1) },
+
+        // 背面
+        new() { Position = new(2, 2, 2, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 2, 2, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(0, 0, 2, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(2, 0, 2, 1), TexCoordUV = new(0, 1) },
+
+        // 左面
+        new() { Position = new(0, 2, 2, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 2, 1), TexCoordUV = new(0, 1) },
+
+        // 右面
+        new() { Position = new(2, 2, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(2, 2, 2, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(2, 0, 2, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(2, 0, 0, 1), TexCoordUV = new(0, 1) },
+
+        // 上面
+        new() { Position = new(0, 2, 2, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(2, 2, 2, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(2, 2, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0, 1) },
+
+        // 下面
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(2, 0, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(2, 0, 2, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 2, 1), TexCoordUV = new(0, 1) },
+    ];
+
+    protected static uint[] IndexArray = [
+        // 正面
+        0, 1, 2, 0, 2, 3,
+        // 背面
+        4, 5, 6, 4, 6, 7,
+        // 左面
+        8, 9, 10, 8, 10, 11,
+        // 右面
+        12, 13, 14, 12, 14, 15,
+        // 上面
+        16, 17, 18, 16, 18, 19,
+        // 下面
+        20, 21, 22, 20, 22, 23,
+    ];
+
+    public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
+
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Height = 1,
+            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1, Quality = 0 },
+        };
+
+        var heapProperties = new D3D12_HEAP_PROPERTIES() {
+            Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+        };
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _vertexResource);
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _modelMatrixResource);
+
+        uploadResourceDesc.Width = (ulong)(IndexArray.Length * sizeof(uint));
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _indexResource);
+
+        MapWriteUnmap(_vertexResource, VertexArray);
+        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        matrixSpan.Fill(ModelMatrix);
+        MapWriteUnmap(_modelMatrixResource, matrixSpan);
+        MapWriteUnmap(_indexResource, IndexArray);
+
+        _vertexBufferView[0].BufferLocation = _vertexResource.GetGPUVirtualAddress();
+        _vertexBufferView[0].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        _vertexBufferView[0].StrideInBytes = (uint)Unsafe.SizeOf<Vertex>();
+
+        _vertexBufferView[1].BufferLocation = _modelMatrixResource.GetGPUVirtualAddress();
+        _vertexBufferView[1].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        _vertexBufferView[1].StrideInBytes = (uint)Unsafe.SizeOf<Matrix4x4>();
+
+        _indexBufferView.BufferLocation = _indexResource.GetGPUVirtualAddress();
+        _indexBufferView.SizeInBytes = (uint)(IndexArray.Length * sizeof(uint));
+        _indexBufferView.Format = DXGI_FORMAT.DXGI_FORMAT_R32_UINT;
+    }
+}
+
+internal abstract class SoildStair : Model {
+
+    protected static readonly Vertex[] VertexArray = [
+        // 台阶底面
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 0, 1, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 1, 1), TexCoordUV = new(0, 1) },
+
+        // 台阶背面
+        new() { Position = new(1, 1, 1, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 1, 1, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(0, 0, 1, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0, 1, 1), TexCoordUV = new(0, 1) },
+
+        // 台阶正面
+        new() { Position = new(0, 0.5f, 0, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(1, 0.5f, 0, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 1) },
+
+        new() { Position = new(0, 1, 0.5f, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(1, 1, 0.5f, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 0.5f, 0.5f, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(0, 0.5f, 0.5f, 1), TexCoordUV = new(0, 0.5f) },
+
+        // 台阶顶面
+        new() { Position = new(0, 0.5f, 0.5f, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(1, 0.5f, 0.5f, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(1, 0.5f, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0.5f, 0, 1), TexCoordUV = new(0, 1) },
+
+        new() { Position = new(0, 1, 1, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(1, 1, 1, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 1, 0.5f, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(0, 1, 0.5f, 1), TexCoordUV = new(0, 0.5f) },
+
+        // 台阶左面
+        new() { Position = new(0, 1, 1, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 1, 0.5f, 1), TexCoordUV = new(0.5f, 0) },
+        new() { Position = new(0, 0, 0.5f, 1), TexCoordUV = new(0.5f, 1) },
+        new() { Position = new(0, 0, 1, 1), TexCoordUV = new(0, 1) },
+
+        new() { Position = new(0, 0.5f, 0.5f, 1), TexCoordUV = new(0.5f, 0.5f) },
+        new() { Position = new(0, 0.5f, 0, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 0.5f, 1), TexCoordUV = new(0.5f, 1) },
+
+        // 台阶右面
+        new() { Position = new(1, 1, 0.5f, 1), TexCoordUV = new(0.5f, 0) },
+        new() { Position = new(1, 1, 1, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 0, 1, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0, 0.5f, 1), TexCoordUV = new(0.5f, 1) },
+
+        new() { Position = new(1, 0.5f, 0, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(1, 0.5f, 0.5f, 1), TexCoordUV = new(0.5f, 0.5f) },
+        new() { Position = new(1, 0, 0.5f, 1), TexCoordUV = new(0.5f, 1) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(0, 1) },
+    ];
+
+    protected static readonly uint[] IndexArray = [
+        // 台阶底面
+        0, 1, 2, 0, 2, 3,
+        // 台阶背面
+        4, 5, 6, 4, 6, 7,
+        // 台阶正面
+        8, 9, 10, 8, 10, 11,
+        12, 13, 14, 12, 14, 15,
+        // 台阶顶面
+        16, 17, 18, 16, 18, 19,
+        20, 21, 22, 20, 22, 23,
+        // 台阶左面
+        24, 25, 26, 24, 26, 27,
+        28, 29, 30, 28, 30, 31,
+        // 台阶右面
+        32, 33, 34, 32, 34, 35,
+        36, 37, 38, 36, 38, 39,
+    ];
+
+    public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
+
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Height = 1,
+            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1, Quality = 0 },
+        };
+
+        var heapProperties = new D3D12_HEAP_PROPERTIES() {
+            Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+        };
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _vertexResource);
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _modelMatrixResource);
+
+        uploadResourceDesc.Width = (ulong)(IndexArray.Length * sizeof(uint));
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _indexResource);
+
+        MapWriteUnmap(_vertexResource, VertexArray);
+        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        matrixSpan.Fill(ModelMatrix);
+        MapWriteUnmap(_modelMatrixResource, matrixSpan);
+        MapWriteUnmap(_indexResource, IndexArray);
+
+        _vertexBufferView[0].BufferLocation = _vertexResource.GetGPUVirtualAddress();
+        _vertexBufferView[0].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        _vertexBufferView[0].StrideInBytes = (uint)Unsafe.SizeOf<Vertex>();
+
+        _vertexBufferView[1].BufferLocation = _modelMatrixResource.GetGPUVirtualAddress();
+        _vertexBufferView[1].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        _vertexBufferView[1].StrideInBytes = (uint)Unsafe.SizeOf<Matrix4x4>();
+
+        _indexBufferView.BufferLocation = _indexResource.GetGPUVirtualAddress();
+        _indexBufferView.SizeInBytes = (uint)(IndexArray.Length * sizeof(uint));
+        _indexBufferView.Format = DXGI_FORMAT.DXGI_FORMAT_R32_UINT;
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        commandList.DrawIndexedInstanced((uint)IndexArray.Length, 1, 0, 0, 0);
+    }
+}
+
+internal class Dirt : SoildBlock {
+
+    public Dirt() {
+        SetTextureGPUHandle("dirt");
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["dirt"]);
+
+        commandList.DrawIndexedInstanced((uint)IndexArray.Length, 1, 0, 0, 0);
+    }
+}
+
+internal class PlanksOak : SoildBlock {
+
+    public PlanksOak() {
+        SetTextureGPUHandle("planks_oak");
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["planks_oak"]);
+
+        commandList.DrawIndexedInstanced((uint)IndexArray.Length, 1, 0, 0, 0);
+    }
+}
+
+internal class Furnace : SoildBlock {
+
+    public Furnace() {
+        SetTextureGPUHandle("furnace_front_off");
+        SetTextureGPUHandle("furnace_side");
+        SetTextureGPUHandle("furnace_top");
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        // 渲染上下面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["furnace_front_off"]);
+        commandList.DrawIndexedInstanced(12, 1, 24, 0, 0);
+
+        // 渲染左右背面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["furnace_side"]);
+        commandList.DrawIndexedInstanced(18, 1, 6, 0, 0);
+
+        // 渲染上下面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["furnace_top"]);
+        commandList.DrawIndexedInstanced(6, 1, 0, 0, 0);
+    }
+}
+
+internal class CraftingTable : SoildBlock {
+
+    public CraftingTable() {
+        SetTextureGPUHandle("crafting_table_front");
+        SetTextureGPUHandle("crafting_table_side");
+        SetTextureGPUHandle("crafting_table_top");
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        // 渲染上下面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["crafting_table_front"]);
+        commandList.DrawIndexedInstanced(12, 1, 24, 0, 0);
+
+        // 渲染左右背面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["crafting_table_side"]);
+        commandList.DrawIndexedInstanced(18, 1, 6, 0, 0);
+
+        // 渲染上下面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["crafting_table_top"]);
+        commandList.DrawIndexedInstanced(6, 1, 0, 0, 0);
+    }
+}
+
+internal class LogOak : SoildBlock {
+
+    public LogOak() {
+        SetTextureGPUHandle("log_oak");
+        SetTextureGPUHandle("log_oak_top");
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        // 渲染上下面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["log_oak_top"]);
+        commandList.DrawIndexedInstanced(12, 1, 24, 0, 0);
+
+        // 渲染左右正背面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["log_oak"]);
+        commandList.DrawIndexedInstanced(24, 1, 0, 0, 0);
+
+    }
+}
+
+internal class Grass : SoildBlock {
+
+    public Grass() {
+        SetTextureGPUHandle("grass_side");
+        SetTextureGPUHandle("grass_top");
+        SetTextureGPUHandle("dirt");
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        // 渲染上面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["grass_top"]);
+        commandList.DrawIndexedInstanced(6, 1, 24, 0, 0);
+
+        // 渲染下面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["dirt"]);
+        commandList.DrawIndexedInstanced(6, 1, 30, 0, 0);
+
+        // 渲染左右正背面
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["grass_side"]);
+        commandList.DrawIndexedInstanced(24, 1, 0, 0, 0);
+
+    }
+}
+
+internal class PlanksOakSoildStair : SoildStair {
+
+    public PlanksOakSoildStair() {
+        SetTextureGPUHandle("planks_oak");
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        commandList.SetGraphicsRootDescriptorTable(1, _textureGPUHandleMap["planks_oak"]);
+
+        commandList.DrawIndexedInstanced((uint)IndexArray.Length, 1, 0, 0, 0);
+    }
+}
+
+internal class TextureMapInfo {
+    public string TextureFilePath { get; set; }
+    public ComPtr<ID3D12Resource> DefaultHeapTextureResource { get; set; }
+    public ComPtr<ID3D12Resource> UploadHeapTextureResource { get; set; }
+    public D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle { get; set; }
+    public D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle { get; set; }
+}
+
+internal class ModelManager {
+
+    private readonly Dictionary<string, TextureMapInfo> _textureSRVMap = [];
+    private readonly List<Model> _modelGroup = [];
+
+    public IReadOnlyDictionary<string, TextureMapInfo> TextureSRVMap => _textureSRVMap;
+
+    public ModelManager() {
+        _textureSRVMap["dirt"] = new() { TextureFilePath = "resource/dirt.png" };
+        _textureSRVMap["grass_top"] = new() { TextureFilePath = "resource/grass_top.png" };
+        _textureSRVMap["grass_side"] = new() { TextureFilePath = "resource/grass_side.png" };
+        _textureSRVMap["log_oak"] = new() { TextureFilePath = "resource/log_oak.png" };
+        _textureSRVMap["log_oak_top"] = new() { TextureFilePath = "resource/log_oak_top.png" };
+        _textureSRVMap["furnace_front_off"] = new() { TextureFilePath = "resource/furnace_front_off.png" };
+        _textureSRVMap["furnace_side"] = new() { TextureFilePath = "resource/furnace_side.png" };
+        _textureSRVMap["furnace_top"] = new() { TextureFilePath = "resource/furnace_top.png" };
+        _textureSRVMap["crafting_table_front"] = new() { TextureFilePath = "resource/crafting_table_front.png" };
+        _textureSRVMap["crafting_table_side"] = new() { TextureFilePath = "resource/crafting_table_side.png" };
+        _textureSRVMap["crafting_table_top"] = new() { TextureFilePath = "resource/crafting_table_top.png" };
+        _textureSRVMap["planks_oak"] = new() { TextureFilePath = "resource/planks_oak.png" };
+
+    }
+
+    public void CreateBlock() {
+        // 两层泥土地基，y 是高度
+        for (int x = 0; x < 10; x++) {
+            for (int z = -4; z < 10; z++) {
+                for (int y = -2; y < 0; y++) {
+                    var dirt = new Dirt {
+                        ModelMatrix = Matrix4x4.CreateTranslation(x, y, z)
+                    };
+                    _modelGroup.Add(dirt);
+                }
+            }
+        }
+
+        // 一层草方块地基
+        for (int x = 0; x < 10; x++) {
+            for (int z = -4; z < 10; z++) {
+                var grass = new Grass {
+                    ModelMatrix = Matrix4x4.CreateTranslation(x, 0, z)
+                };
+                _modelGroup.Add(grass);
+            }
+        }
+
+        // 4x4 木板房基
+        for (int x = 3; x < 7; x++) {
+            for (int z = 3; z < 7; z++) {
+                var plank = new PlanksOak() {
+                    ModelMatrix = Matrix4x4.CreateTranslation(x, 2, z)
+                };
+                _modelGroup.Add(plank);
+            }
+        }
+
+        // 8 柱原木 
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(3, y, 2)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(2, y, 3)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(6, y, 2)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(7, y, 3)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(7, y, 6)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(6, y, 7)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(2, y, 6)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        for (int y = 1; y < 7; y++) {
+            var logOak = new LogOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(3, y, 7)
+            };
+            _modelGroup.Add(logOak);
+        }
+
+        // 其他木板与门前台阶
+        {
+            var plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(4, 2, 2)
+            };
+            _modelGroup.Add(plank);
+
+            plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(5, 2, 2)
+            };
+            _modelGroup.Add(plank);
+
+            for (int y = 5; y < 7; y++) {
+                for (int x = 4; x < 6; x++) {
+                    plank = new PlanksOak {
+                        ModelMatrix = Matrix4x4.CreateTranslation(x, y, 2)
+                    };
+                    _modelGroup.Add(plank);
+                }
+            }
+
+            for (int y = 2; y < 4; y++) {
+                for (int z = 4; z < 6; z++) {
+                    plank = new PlanksOak {
+                        ModelMatrix = Matrix4x4.CreateTranslation(2, y, z)
+                    };
+                    _modelGroup.Add(plank);
+                }
+            }
+
+            for (int y = 2; y < 4; y++) {
+                for (int x = 4; x < 6; x++) {
+                    plank = new PlanksOak {
+                        ModelMatrix = Matrix4x4.CreateTranslation(x, y, 7)
+                    };
+                    _modelGroup.Add(plank);
+                }
+            }
+
+            for (int y = 2; y < 4; y++) {
+                for (int z = 4; z < 6; z++) {
+                    plank = new PlanksOak {
+                        ModelMatrix = Matrix4x4.CreateTranslation(7, y, z)
+                    };
+                    _modelGroup.Add(plank);
+                }
+            }
+
+            plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(2, 6, 4)
+            };
+            _modelGroup.Add(plank);
+
+            plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(2, 6, 5)
+            };
+            _modelGroup.Add(plank);
+
+            plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(4, 6, 7)
+            };
+            _modelGroup.Add(plank);
+
+            plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(5, 6, 7)
+            };
+            _modelGroup.Add(plank);
+
+            plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(7, 6, 4)
+            };
+            _modelGroup.Add(plank);
+
+            plank = new PlanksOak {
+                ModelMatrix = Matrix4x4.CreateTranslation(7, 6, 5)
+            };
+            _modelGroup.Add(plank);
+
+            var stair = new PlanksOakSoildStair {
+                ModelMatrix = Matrix4x4.CreateTranslation(4, 2, 1)
+            };
+            _modelGroup.Add(stair);
+
+            stair = new PlanksOakSoildStair {
+                ModelMatrix = Matrix4x4.CreateTranslation(5, 2, 1)
+            };
+            _modelGroup.Add(stair);
+
+            stair = new PlanksOakSoildStair {
+                ModelMatrix = Matrix4x4.CreateTranslation(4, 1, 0)
+            };
+            _modelGroup.Add(stair);
+
+            stair = new PlanksOakSoildStair {
+                ModelMatrix = Matrix4x4.CreateTranslation(5, 1, 0)
+            };
+            _modelGroup.Add(stair);
+        }
+
+        // 4x4 木板房顶
+        for (int x = 3; x < 7; x++) {
+            for (int z = 3; z < 7; z++) {
+                var plank = new PlanksOak {
+                    ModelMatrix = Matrix4x4.CreateTranslation(x, 6, z)
+                };
+                _modelGroup.Add(plank);
+            }
+        }
+
+        // 屋顶
+        {
+            // 第一层
+            for (int x = 3; x < 7; x++) {
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = Matrix4x4.CreateTranslation(x, 6, 1)
+                };
+                _modelGroup.Add(stair);
+            }
+
+            for (int x = 3; x < 7; x++) {
+                // 旋转橡木台阶用的模型矩阵
+                // 这里本来是可以不用 XMMatrixTranslation(-0.5, -0.5, -0.5) 平移到模型中心的
+                // 因为作者本人 (我) 的设计失误，把模型坐标系原点建立在模型左下角了 (见上文的 VertexArray)
+                // 导致还要先把原点平移到模型中心，旋转完再还原，增大计算量，这个是完全可以规避的
+                // 读者可以自行修改 VertexArray，使方块以自身中心为原点建系，这样就可以直接 XMMatrixRotationY() 进行旋转了
+                var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
+                transform *= Matrix4x4.CreateRotationY(MathF.PI);                                      // 平移中心后，再旋转，否则会出错 (旋转角度是弧度)
+                transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);         // 旋转完再还原
+                transform *= Matrix4x4.CreateTranslation(x, 6, 8);                  // 再平移到对应的坐标
+
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = transform
+                };
+                _modelGroup.Add(stair);
+            }
+
+            for (int z = 3; z < 7; z++) {
+                var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
+                transform *= Matrix4x4.CreateRotationY(MathF.PI / 2.0f);            // 旋转 90°
+                transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
+                transform *= Matrix4x4.CreateTranslation(1, 6, z);
+
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = transform
+                };
+                _modelGroup.Add(stair);
+            }
+
+            for (int z = 3; z < 7; z++) {
+                var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
+                transform *= Matrix4x4.CreateRotationY(MathF.PI + MathF.PI / 2.0f); // 旋转 270°
+                transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
+                transform *= Matrix4x4.CreateTranslation(8, 6, z);
+
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = transform
+                };
+                _modelGroup.Add(stair);
+            }
+
+            // 第二层
+            for (int x = 3; x < 7; x++) {
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = Matrix4x4.CreateTranslation(x, 7, 2)
+                };
+                _modelGroup.Add(stair);
+            }
+
+            for (int x = 3; x < 7; x++) {
+                var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
+                transform *= Matrix4x4.CreateRotationY(MathF.PI);
+                transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
+                transform *= Matrix4x4.CreateTranslation(x, 7, 7);
+
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = transform
+                };
+                _modelGroup.Add(stair);
+            }
+
+            for (int z = 3; z < 7; z++) {
+                var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
+                transform *= Matrix4x4.CreateRotationY(MathF.PI / 2.0f);
+                transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
+                transform *= Matrix4x4.CreateTranslation(2, 7, z);
+
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = transform
+                };
+                _modelGroup.Add(stair);
+            }
+
+            for (int z = 3; z < 7; z++) {
+                var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
+                transform *= Matrix4x4.CreateRotationY(MathF.PI + MathF.PI / 2.0f);
+                transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
+                transform *= Matrix4x4.CreateTranslation(7, 7, z);
+
+                var stair = new PlanksOakSoildStair {
+                    ModelMatrix = transform
+                };
+                _modelGroup.Add(stair);
+            }
+
+            // 补上屋顶空位
+            for (int x = 3; x < 7; x++) {
+                for (int z = 3; z < 7; z++) {
+                    var plank = new PlanksOak {
+                        ModelMatrix = Matrix4x4.CreateTranslation(x, 7, z)
+                    };
+                    _modelGroup.Add(plank);
+                }
+            }
+        }
+
+        // 工作台和熔炉
+        var craftTable = new CraftingTable {
+            ModelMatrix = Matrix4x4.CreateTranslation(3, 3, 6)
+        };
+        _modelGroup.Add(craftTable);
+
+        var furnace = new Furnace {
+            ModelMatrix = Matrix4x4.CreateTranslation(4, 3, 6)
+        };
+        _modelGroup.Add(furnace);
+
+        furnace = new Furnace {
+            ModelMatrix = Matrix4x4.CreateTranslation(5, 3, 6)
+        };
+        _modelGroup.Add(furnace);
+
+    }
+
+    public void CreateModelResource(ID3D12Device4 d3d12Device) {
+        foreach (var model in _modelGroup) {
+            model.CreateResourceAndDescriptor(d3d12Device);
+            foreach (var texture in model.TextureGPUHandleMap.Keys) {
+                model.SetTextureGPUHandle(texture, _textureSRVMap[texture].GPUHandle);
+            }
+        }
+    }
+
+    public void RenderAllModel(ID3D12GraphicsCommandList commandList) {
+        foreach (var model in _modelGroup) {
+            model.DrawModel(commandList);
+        }
+    }
+}
+
 internal class DX12Engine {
 
     private const int FrameCount = 3;
@@ -274,17 +1102,13 @@ internal class DX12Engine {
     private uint _textureHeight = 0;
     private uint _bitsPerPixel = 0;
 
+    private readonly ModelManager _modelManager = new();
     private ID3D12DescriptorHeap _srvHeap;
 
     private uint _bytesPerRowSize = 0;
     private uint _textureSize = 0;
     private uint _uploadResourceRowSize = 0;
     private uint _uploadResourceSize = 0;
-    private ComPtr<ID3D12Resource> _uploadTextureResource;
-    private ComPtr<ID3D12Resource> _defaultTextureResource;
-
-    private D3D12_CPU_DESCRIPTOR_HANDLE _srvCPUHandle;
-    private D3D12_GPU_DESCRIPTOR_HANDLE _srvGPUHandle;
 
     private struct CBuffer {
         internal Matrix4x4 MVPMatrix;
@@ -295,16 +1119,6 @@ internal class DX12Engine {
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
     private ID3D12PipelineState _pipelineStateObject;
-
-    private struct Vertex {
-        internal Vector4 Position;
-        internal Vector2 TexCoordUV;
-    }
-    private ID3D12Resource _vertexResource;
-    private D3D12_VERTEX_BUFFER_VIEW _vertexBufferView;
-
-    private ID3D12Resource _indexResource;
-    private D3D12_INDEX_BUFFER_VIEW _indexBufferView;
 
     private readonly Camera _firstCamera = new();
 
@@ -472,7 +1286,22 @@ internal class DX12Engine {
         _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
     }
 
-    private bool LoadTextureFromFile() {
+    private void CreateSRVHeap() {
+        var srvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
+            NumDescriptors = (uint)_modelManager.TextureSRVMap.Count,
+            Type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            Flags = D3D12_DESCRIPTOR_HEAP_FLAGS.D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
+        };
+
+        _d3d12Device.CreateDescriptorHeap(srvHeapDesc, out _srvHeap);
+    }
+
+    private void StartCommandRecord() {
+        _commandAllocator.Reset();
+        _commandList.Reset(_commandAllocator, null);
+    }
+
+    private bool LoadTextureFromFile(string textureFilename) {
         if (_wicFactory == null) {
             CoCreateInstance(
                 CLSID_WICImagingFactory2,
@@ -483,7 +1312,7 @@ internal class DX12Engine {
 
         try {
             _wicBitmapDecoder = _wicFactory.CreateDecoderFromFilename(
-               TextureFilename,
+               textureFilename,
                null,
                GENERIC_ACCESS_RIGHTS.GENERIC_READ,
                WICDecodeOptions.WICDecodeMetadataCacheOnLoad);
@@ -524,15 +1353,6 @@ internal class DX12Engine {
         return true;
     }
 
-    private void CreateSRVHeap() {
-        var srvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
-            NumDescriptors = 1,
-            Type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            Flags = D3D12_DESCRIPTOR_HEAP_FLAGS.D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
-        };
-
-        _d3d12Device.CreateDescriptorHeap(srvHeapDesc, out _srvHeap);
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint CeilToMultiple(uint value, uint multiple) {
@@ -540,7 +1360,7 @@ internal class DX12Engine {
         return (value + multiple - 1) & ~(multiple - 1);
     }
 
-    private void CreateUploadAndDefaultResource() {
+    private void CreateUploadAndDefaultResource(TextureMapInfo info) {
         _bytesPerRowSize = (_textureWidth * _bitsPerPixel + 7) / 8;
 
         _textureSize = _bytesPerRowSize * _textureHeight;
@@ -570,7 +1390,7 @@ internal class DX12Engine {
             D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out var uploadTextureResource);
-        _uploadTextureResource = new(uploadTextureResource);
+        info.UploadHeapTextureResource = new(uploadTextureResource);
 
 
         var defaultResourceDesc = new D3D12_RESOURCE_DESC() {
@@ -593,15 +1413,15 @@ internal class DX12Engine {
             D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_COPY_DEST,
             null,
             out var defaultTextureResource);
-        _defaultTextureResource = new(defaultTextureResource);
+        info.DefaultHeapTextureResource = new(defaultTextureResource);
     }
 
-    private unsafe void CopyTextureDataToDefaultResource() {
+    private unsafe void CopyTextureDataToDefaultResource(TextureMapInfo info) {
         var textureData = ArrayPool<byte>.Shared.Rent((int)_textureSize);
 
         _wicBitmapSource.CopyPixels(null, _bytesPerRowSize, (uint)textureData.Length, textureData);
 
-        _uploadTextureResource.Managed.Map(0, null, out var transferPointer);
+        info.UploadHeapTextureResource.Managed.Map(0, null, out var transferPointer);
 
         int rowBytes = (int)_bytesPerRowSize;
         ReadOnlySpan<byte> allSrcData = textureData;
@@ -612,12 +1432,12 @@ internal class DX12Engine {
             srcRow.CopyTo(dstRow);
         }
 
-        _uploadTextureResource.Managed.Unmap(0, default(D3D12_RANGE?));
+        info.UploadHeapTextureResource.Managed.Unmap(0, default(D3D12_RANGE?));
 
         ArrayPool<byte>.Shared.Return(textureData);
 
         var placedFootprint = new D3D12_PLACED_SUBRESOURCE_FOOTPRINT();
-        var defaultResourceDesc = _defaultTextureResource.Managed.GetDesc();
+        var defaultResourceDesc = info.DefaultHeapTextureResource.Managed.GetDesc();
 
         _d3d12Device.GetCopyableFootprints(
             defaultResourceDesc,
@@ -628,30 +1448,23 @@ internal class DX12Engine {
         var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE.D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             Anonymous = new() { SubresourceIndex = 0 },
-            pResource = (ID3D12Resource_unmanaged*)_defaultTextureResource.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)info.DefaultHeapTextureResource.Ptr,
         };
 
         var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE.D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
             Anonymous = new() { PlacedFootprint = placedFootprint },
-            pResource = (ID3D12Resource_unmanaged*)_uploadTextureResource.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)info.UploadHeapTextureResource.Ptr,
         };
 
-        _commandAllocator.Reset();
-        _commandList.Reset(_commandAllocator, null);
-
         _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
-        _commandList.Close();
-
-        _commandQueue.ExecuteCommandLists([_commandList]);
-
-
-        _fenceValue++;
-        _commandQueue.Signal(_fence, _fenceValue);
-        _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
-    private void CreateSRV() {
+    private void CreateSRV(
+        TextureMapInfo info,
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) {
+
         var srvDescriptorDesc = new D3D12_SHADER_RESOURCE_VIEW_DESC() {
             ViewDimension = D3D12_SRV_DIMENSION.D3D12_SRV_DIMENSION_TEXTURE2D,
             Format = _textureFormat,
@@ -659,11 +1472,49 @@ internal class DX12Engine {
             Anonymous = new() { Texture2D = new() { MipLevels = 1 } },
         };
 
-        _srvCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
+        _d3d12Device.CreateShaderResourceView(info.DefaultHeapTextureResource.Managed, srvDescriptorDesc, cpuHandle);
 
-        _d3d12Device.CreateShaderResourceView(_defaultTextureResource.Managed, srvDescriptorDesc, _srvCPUHandle);
+        info.CPUHandle = cpuHandle;
+        info.GPUHandle = gpuHandle;
+    }
 
-        _srvGPUHandle = _srvHeap.GetGPUDescriptorHandleForHeapStart();
+    private void StartCommandExecute() {
+        _commandList.Close();
+
+        _commandQueue.ExecuteCommandLists([_commandList]);
+        _dxgiSwapChain.Present(1, 0);
+
+
+        _fenceValue++;
+        _commandQueue.Signal(_fence, _fenceValue);
+        _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
+    }
+
+    private void CreateModelTextureResource() {
+        CreateSRVHeap();
+
+        var currentCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
+        var currentGPUHandle = _srvHeap.GetGPUDescriptorHandleForHeapStart();
+        var srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+        StartCommandRecord();
+
+        foreach (var textureInfo in _modelManager.TextureSRVMap.Values) {
+            LoadTextureFromFile(textureInfo.TextureFilePath);
+            CreateUploadAndDefaultResource(textureInfo);
+            CopyTextureDataToDefaultResource(textureInfo);
+            CreateSRV(textureInfo, currentCPUHandle, currentGPUHandle);
+
+            currentCPUHandle.ptr += srvDescriptorSize;
+            currentGPUHandle.ptr += srvDescriptorSize;
+        }
+
+        StartCommandExecute();
+    }
+
+    private void CreateModelVertexAndIndexResource() {
+        _modelManager.CreateBlock();
+        _modelManager.CreateModelResource(_d3d12Device);
     }
 
     private unsafe void CreateCBVResource() {
@@ -697,6 +1548,20 @@ internal class DX12Engine {
     private unsafe void CreateRootSignature() {
         var rootParameters = stackalloc D3D12_ROOT_PARAMETER[2];
 
+        // 把更新频率高的根参数放前面，低的放后面，可以优化性能 (微软官方文档建议)
+        // 因为 DirectX API 能对根签名进行 Version Control 版本控制，在根签名越前面的根参数，访问速度更快
+
+        var cbvRootDescriptorDesc = new D3D12_ROOT_DESCRIPTOR() {
+            ShaderRegister = 0,
+            RegisterSpace = 0,
+        };
+
+        rootParameters[0] = new D3D12_ROOT_PARAMETER() {
+            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_ALL,
+            ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_CBV,
+            Anonymous = new() { Descriptor = cbvRootDescriptorDesc },
+        };
+
 
         var srvDescriptorDesc = new D3D12_DESCRIPTOR_RANGE() {
             RangeType = D3D12_DESCRIPTOR_RANGE_TYPE.D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
@@ -711,23 +1576,12 @@ internal class DX12Engine {
             pDescriptorRanges = &srvDescriptorDesc,
         };
 
-        rootParameters[0] = new D3D12_ROOT_PARAMETER() {
+        rootParameters[1] = new D3D12_ROOT_PARAMETER() {
             ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_PIXEL,
             ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             Anonymous = new() { DescriptorTable = rootDescriptorTableDesc },
         };
 
-
-        var cbvRootDescriptor = new D3D12_ROOT_DESCRIPTOR() {
-            ShaderRegister = 0,
-            RegisterSpace = 0,
-        };
-
-        rootParameters[1] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_ALL,
-            ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_CBV,
-            Anonymous = new() { Descriptor = cbvRootDescriptor },
-        };
 
         var staticSamplerDesc = new D3D12_STATIC_SAMPLER_DESC() {
             ShaderRegister = 0,
@@ -777,7 +1631,7 @@ internal class DX12Engine {
         var psoDesc = new D3D12_GRAPHICS_PIPELINE_STATE_DESC();
 
         var inputLayoutDesc = new D3D12_INPUT_LAYOUT_DESC();
-        var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[2];
+        var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[6];
 
         var semanticNamePosition = "POSITION"u8;
         byte* pSemanticNamePosition = stackalloc byte[semanticNamePosition.Length + 1];
@@ -812,7 +1666,24 @@ internal class DX12Engine {
             InstanceDataStepRate = 0,
         };
 
-        inputLayoutDesc.NumElements = 2;
+        var semanticNameMatrix = "MATRIX"u8;
+        byte* pSemanticNameMatrix = stackalloc byte[semanticNameMatrix.Length + 1];
+        semanticNameMatrix.CopyTo(new Span<byte>(pSemanticNameMatrix, semanticNameMatrix.Length));
+        pSemanticNameMatrix[semanticNameMatrix.Length] = 0;
+
+        for (uint i = 0; i < 4; i++) {
+            inputElementDesc[2 + i] = new() {
+                SemanticName = new(pSemanticNameMatrix),
+                SemanticIndex = i,
+                Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
+                InputSlot = 1,
+                AlignedByteOffset = (uint)(i * Unsafe.SizeOf<Vector4>()),
+                InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InstanceDataStepRate = 0,
+            };
+        }
+
+        inputLayoutDesc.NumElements = 6;
         inputLayoutDesc.pInputElementDescs = inputElementDesc;
         psoDesc.InputLayout = inputLayoutDesc;
 
@@ -880,122 +1751,6 @@ internal class DX12Engine {
         _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObject);
     }
 
-    private unsafe void CreateVertexResource() {
-        ReadOnlySpan<Vertex> vertices = [
-            // 正面
-            new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0, 0) },
-            new() { Position = new(2, 2, 0, 1), TexCoordUV = new(1, 0) },
-            new() { Position = new(2, 0, 0, 1), TexCoordUV = new(1, 1) },
-            new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 1) },
-
-            // 背面
-            new() { Position = new(2, 2, 2, 1), TexCoordUV = new(0, 0) },
-            new() { Position = new(0, 2, 2, 1), TexCoordUV = new(1, 0) },
-            new() { Position = new(0, 0, 2, 1), TexCoordUV = new(1, 1) },
-            new() { Position = new(2, 0, 2, 1), TexCoordUV = new(0, 1) },
-
-            // 左面
-            new() { Position = new(0, 2, 2, 1), TexCoordUV = new(0, 0) },
-            new() { Position = new(0, 2, 0, 1), TexCoordUV = new(1, 0) },
-            new() { Position = new(0, 0, 0, 1), TexCoordUV = new(1, 1) },
-            new() { Position = new(0, 0, 2, 1), TexCoordUV = new(0, 1) },
-
-            // 右面
-            new() { Position = new(2, 2, 0, 1), TexCoordUV = new(0, 0) },
-            new() { Position = new(2, 2, 2, 1), TexCoordUV = new(1, 0) },
-            new() { Position = new(2, 0, 2, 1), TexCoordUV = new(1, 1) },
-            new() { Position = new(2, 0, 0, 1), TexCoordUV = new(0, 1) },
-
-            // 上面
-            new() { Position = new(0, 2, 2, 1), TexCoordUV = new(0, 0) },
-            new() { Position = new(2, 2, 2, 1), TexCoordUV = new(1, 0) },
-            new() { Position = new(2, 2, 0, 1), TexCoordUV = new(1, 1) },
-            new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0, 1) },
-
-            // 下面
-            new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 0) },
-            new() { Position = new(2, 0, 0, 1), TexCoordUV = new(1, 0) },
-            new() { Position = new(2, 0, 2, 1), TexCoordUV = new(1, 1) },
-            new() { Position = new(0, 0, 2, 1), TexCoordUV = new(0, 1) },
-        ];
-
-        var vertexDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            Width = (ulong)(Unsafe.SizeOf<Vertex>() * vertices.Length),
-            Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
-            DepthOrArraySize = 1,
-            MipLevels = 1,
-            SampleDesc = new() { Count = 1 },
-        };
-
-        _d3d12Device.CreateCommittedResource(
-            new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
-            },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
-            vertexDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
-            null,
-            out _vertexResource);
-
-        _vertexResource.Map(0, null, out var transferPointer);
-        vertices.CopyTo(new(transferPointer, vertices.Length));
-        _vertexResource.Unmap(0, default(D3D12_RANGE?));
-
-        _vertexBufferView.BufferLocation = _vertexResource.GetGPUVirtualAddress();
-        _vertexBufferView.SizeInBytes = (uint)(Unsafe.SizeOf<Vertex>() * vertices.Length);
-        _vertexBufferView.StrideInBytes = (uint)Unsafe.SizeOf<Vertex>();
-    }
-
-    private unsafe void CreateIndexResource() {
-        ReadOnlySpan<uint> indexArray = [
-            // 正面
-            0,1,2,0,2,3,
-            // 背面
-            4,5,6,4,6,7,
-            // 左面
-            8,9,10,8,10,11,
-            // 右面
-            12,13,14,12,14,15,
-            // 上面
-            16,17,18,16,18,19,
-            // 下面
-            20,21,22,20,22,23,
-        ];
-
-        var indexResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            Width = (ulong)(sizeof(uint) * indexArray.Length),
-            Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
-            DepthOrArraySize = 1,
-            MipLevels = 1,
-            SampleDesc = new() { Count = 1 },
-        };
-
-        _d3d12Device.CreateCommittedResource(
-            new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
-            },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
-            indexResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
-            null,
-            out _indexResource);
-
-
-        _indexResource.Map(0, null, out var transferPointer);
-        indexArray.CopyTo(new(transferPointer, indexArray.Length));
-        _indexResource.Unmap(0, default(D3D12_RANGE?));
-
-        _indexBufferView.BufferLocation = _indexResource.GetGPUVirtualAddress();
-        _indexBufferView.SizeInBytes = (uint)(sizeof(uint) * indexArray.Length);
-        _indexBufferView.Format = DXGI_FORMAT.DXGI_FORMAT_R32_UINT;
-    }
-
     private unsafe void UpdateConstantBuffer() {
         Unsafe.AsRef<CBuffer>((void*)mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
     }
@@ -1026,18 +1781,12 @@ internal class DX12Engine {
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue, 0, null);
 
         _commandList.SetDescriptorHeaps([_srvHeap]);
-        _commandList.SetGraphicsRootDescriptorTable(0, _srvGPUHandle);
 
-        _commandList.SetGraphicsRootConstantBufferView(1, _cbvResource.GetGPUVirtualAddress());
+        _commandList.SetGraphicsRootConstantBufferView(0, _cbvResource.GetGPUVirtualAddress());
 
         _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        _commandList.IASetVertexBuffers(0, [_vertexBufferView]);
-
-        _commandList.IASetIndexBuffer(_indexBufferView);
-
-        _commandList.DrawIndexedInstanced(36, 1, 0, 0, 0);
-
+        _modelManager.RenderAllModel(_commandList);
 
         _endBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_endBarrier]);
@@ -1081,7 +1830,6 @@ internal class DX12Engine {
                 case (uint)WAIT_EVENT.WAIT_TIMEOUT: // 渲染超时
                     break;
             }
-
 
         }
     }
@@ -1145,19 +1893,14 @@ internal class DX12Engine {
         engine.CreateRenderTarget();
         engine.CreateFenceAndBarrier();
 
-        engine.LoadTextureFromFile();
-        engine.CreateSRVHeap();
-        engine.CreateUploadAndDefaultResource();
-        engine.CopyTextureDataToDefaultResource();
-        engine.CreateSRV();
+        engine.CreateModelTextureResource();
+
+        engine.CreateModelVertexAndIndexResource();
 
         engine.CreateCBVResource();
 
         engine.CreateRootSignature();
         engine.CreatePSO();
-
-        engine.CreateVertexResource();
-        engine.CreateIndexResource();
 
         engine.RenderLoop();
     }

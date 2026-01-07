@@ -109,8 +109,6 @@ internal class DX12Engine {
     private static readonly float[] Yellow = [1f, 1f, 0f, 1f];
     private static readonly float[] Blue = [0f, 0f, 1f, 1f];
 
-    private const float XM_PIDIV4 = 0.785398163f;
-
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
     private static readonly D3D_FEATURE_LEVEL[] DX12SupportLevels = [
         D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
@@ -439,7 +437,7 @@ internal class DX12Engine {
         _uploadResourceSize = _uploadResourceRowSize * (_textureHeight - 1) + _bytesPerRowSize;
 
 
-        var uploadResouceDesc = new D3D12_RESOURCE_DESC() {
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
             Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = _uploadResourceSize,
@@ -455,7 +453,7 @@ internal class DX12Engine {
                 Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
             },
             D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
-            uploadResouceDesc,
+            uploadResourceDesc,
             D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out var uploadTextureResource);
@@ -888,7 +886,7 @@ internal class DX12Engine {
     private unsafe void UpdateConstantBuffer() {
         _modelMatrix = Matrix4x4.CreateRotationY(30.0f);
         _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(EyePosition.AsVector3(), FocusPosition.AsVector3(), UpDirection.AsVector3());
-        _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(XM_PIDIV4, 4.0f / 3, 0.1f, 1000);
+        _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(MathF.PI / 4.0f, 4.0f / 3, 0.1f, 1000);
 
         Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _modelMatrix * _viewMatrix * _projectionMatrix;
     }

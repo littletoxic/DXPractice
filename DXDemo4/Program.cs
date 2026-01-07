@@ -415,7 +415,7 @@ internal class DX12Engine {
         _uploadResourceSize = _uploadResourceRowSize * (_textureHeight - 1) + _bytesPerRowSize;
 
 
-        var uploadResouceDesc = new D3D12_RESOURCE_DESC() {
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
             Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = _uploadResourceSize,
@@ -431,7 +431,7 @@ internal class DX12Engine {
                 Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
             },
             D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
-            uploadResouceDesc,
+            uploadResourceDesc,
             D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out var uploadTextureResource);
