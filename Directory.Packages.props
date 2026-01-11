@@ -2,8 +2,8 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.264" />
+    <PackageVersion Include="Microsoft.Windows.SDK.Win32Metadata" Version="68.0.4-preview" />
   </ItemGroup>
 </Project>

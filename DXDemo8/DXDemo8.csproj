@@ -1,8 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
-		<Content Include="diamond_ore.png" CopyToOutputDirectory="PreserveNewest" />
-		<Content Include="shader.hlsl" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="TransparentShader.hlsl" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="TranslucenceShader.hlsl" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="OpaqueShader.hlsl" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="resource\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>

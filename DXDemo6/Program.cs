@@ -128,10 +128,10 @@ internal sealed class Camera {
 
     private Point _lastCursorPoint;         // 上一次鼠标的位置
 
-    private static readonly float FovAngleY = MathF.PI / 4.0f;   // 垂直视场角
-    private static readonly float AspectRatio = 4f / 3f;   // 投影窗口宽高比
-    private static readonly float NearZ = 0.1f;            // 近平面到原点的距离
-    private static readonly float FarZ = 1000f;            // 远平面到原点的距离
+    private const float FovAngleY = MathF.PI / 4.0f;   // 垂直视场角
+    private const float AspectRatio = 4f / 3f;   // 投影窗口宽高比
+    private const float NearZ = 0.1f;            // 近平面到原点的距离
+    private const float FarZ = 1000f;            // 远平面到原点的距离
 
     // 模型矩阵，这里我们让模型旋转 30° 就行，注意这里只是一个示例，后文我们会将它移除，每个模型都应该拥有相对独立的模型矩阵
     private Matrix4x4 _modelMatrix;
@@ -219,10 +219,6 @@ internal sealed class DX12Engine {
 
     private const int FrameCount = 3;
     private static readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
-    private static readonly float[] Red = [1f, 0f, 0f, 1f];
-    private static readonly float[] Green = [0f, 1f, 0f, 1f];
-    private static readonly float[] Yellow = [1f, 1f, 0f, 1f];
-    private static readonly float[] Blue = [0f, 0f, 1f, 1f];
 
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
