@@ -24,7 +24,7 @@ internal static class Program {
 
 }
 
-internal unsafe sealed class DX12Engine {
+internal sealed unsafe class DX12Engine {
 
     private const int FrameCount = 3;
     private static readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];

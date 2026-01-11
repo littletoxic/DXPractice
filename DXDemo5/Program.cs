@@ -104,10 +104,6 @@ internal sealed class DX12Engine {
 
     private const int FrameCount = 3;
     private static readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
-    private static readonly float[] Red = [1f, 0f, 0f, 1f];
-    private static readonly float[] Green = [0f, 1f, 0f, 1f];
-    private static readonly float[] Yellow = [1f, 1f, 0f, 1f];
-    private static readonly float[] Blue = [0f, 0f, 1f, 1f];
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
     private static readonly D3D_FEATURE_LEVEL[] DX12SupportLevels = [

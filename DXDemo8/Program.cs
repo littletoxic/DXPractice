@@ -17,7 +17,7 @@ using Windows.Win32.System.SystemServices;
 using Windows.Win32.UI.WindowsAndMessaging;
 using static Windows.Win32.PInvoke;
 
-namespace DXDemo7;
+namespace DXDemo8;
 
 internal static class DX12TextureHelper {
 
@@ -258,7 +258,7 @@ internal abstract class Model {
 }
 
 internal abstract class SoildBlock : Model {
-    protected static Vertex[] VertexArray = [
+    protected static readonly Vertex[] VertexArray = [
         // 正面
         new() { Position = new(0, 1, 0, 1), TexCoordUV = new(0, 0) },
         new() { Position = new(1, 1, 0, 1), TexCoordUV = new(1, 0) },
@@ -296,7 +296,7 @@ internal abstract class SoildBlock : Model {
         new() { Position = new(0, 0, 1, 1), TexCoordUV = new(0, 1) },
     ];
 
-    protected static uint[] IndexArray = [
+    protected static readonly uint[] IndexArray = [
         // 正面
         0, 1, 2, 0, 2, 3,
         // 背面
@@ -659,6 +659,625 @@ internal sealed class PlanksOakSoildStair : SoildStair {
     }
 }
 
+internal sealed class GlassLightBlue : SoildBlock {
+    public GlassLightBlue() {
+        _textureNameSet = ["glass_light_blue"];
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["glass_light_blue"]);
+
+        commandList.DrawIndexedInstanced((uint)IndexArray.Length, 1, 0, 0, 0);
+    }
+}
+
+internal class Door : Model {
+
+    protected static readonly Vertex[] VertexArray = [
+        // 门上部分
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(1, 2, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 1, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 1, 0, 1), TexCoordUV = new(0, 1) },
+
+        new() { Position = new(1, 2, 0.2f, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(0, 2, 0.2f, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 1, 0.2f, 1), TexCoordUV = new(0, 1) },
+        new() { Position = new(1, 1, 0.2f, 1), TexCoordUV = new(1, 1) },
+
+        // 门下部分
+        new() { Position = new(0, 1, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(1, 1, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 1) },
+
+        new() { Position = new(1, 1, 0.2f, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 1, 0.2f, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(0, 0, 0.2f, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0, 0.2f, 1), TexCoordUV = new(0, 1) },
+
+        // 门隙部分
+        new() { Position = new(0, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(1, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        // 上部分门隙 (左侧装饰)
+        new() { Position = new(0.1875f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.4375f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.4375f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        // 上部分门隙 (右侧装饰)
+        new() { Position = new(0.5625f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.8125f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.8125f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+    ];
+
+    protected static readonly uint[] IndexArray = [
+        // 门上部分
+        0, 1, 2, 0, 2, 3,
+        4, 5, 6, 4, 6, 7,
+
+        // 门下部分
+        8, 9, 10, 8, 10, 11,
+        12, 13, 14, 12, 14, 15,
+
+        // 门隙部分
+        16, 17, 18, 16, 18, 19,
+        20, 21, 22, 20, 22, 23,
+        24, 25, 26, 24, 26, 27,
+        28, 29, 30, 28, 30, 31,
+
+        // 上部分门隙
+        32, 33, 34, 32, 34, 35,
+        36, 37, 38, 36, 38, 39,
+        40, 41, 42, 40, 42, 43,
+        44, 45, 46, 44, 46, 47,
+
+        48, 49, 50, 48, 50, 51,
+        52, 53, 54, 52, 54, 55,
+        56, 57, 58, 56, 58, 59,
+        60, 61, 62, 60, 62, 63,
+
+        64, 65, 66, 64, 66, 67,
+        68, 69, 70, 68, 70, 71,
+        72, 73, 74, 72, 74, 75,
+        76, 77, 78, 76, 78, 79,
+
+        80, 81, 82, 80, 82, 83,
+        84, 85, 86, 84, 86, 87,
+        88, 89, 90, 88, 90, 91,
+        92, 93, 94, 92, 94, 95
+    ];
+
+    public Door() {
+        _textureNameSet = ["door_wood_lower", "door_wood_upper"];
+    }
+
+    public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
+
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Height = 1,
+            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1, Quality = 0 },
+        };
+
+        var heapProperties = new D3D12_HEAP_PROPERTIES() {
+            Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+        };
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _vertexResource);
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _modelMatrixResource);
+
+        uploadResourceDesc.Width = (ulong)(IndexArray.Length * sizeof(uint));
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _indexResource);
+
+        MapWriteUnmap(_vertexResource, VertexArray);
+        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        matrixSpan.Fill(ModelMatrix);
+        MapWriteUnmap(_modelMatrixResource, matrixSpan);
+        MapWriteUnmap(_indexResource, IndexArray);
+
+        _vertexBufferView[0].BufferLocation = _vertexResource.GetGPUVirtualAddress();
+        _vertexBufferView[0].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        _vertexBufferView[0].StrideInBytes = (uint)Unsafe.SizeOf<Vertex>();
+
+        _vertexBufferView[1].BufferLocation = _modelMatrixResource.GetGPUVirtualAddress();
+        _vertexBufferView[1].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        _vertexBufferView[1].StrideInBytes = (uint)Unsafe.SizeOf<Matrix4x4>();
+
+        _indexBufferView.BufferLocation = _indexResource.GetGPUVirtualAddress();
+        _indexBufferView.SizeInBytes = (uint)(IndexArray.Length * sizeof(uint));
+        _indexBufferView.Format = DXGI_FORMAT.DXGI_FORMAT_R32_UINT;
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        // 门上部分
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["door_wood_upper"]);
+        commandList.DrawIndexedInstanced(12, 1, 0, 0, 0);
+
+        // 门下部分
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["door_wood_lower"]);
+        commandList.DrawIndexedInstanced(12, 1, 12, 0, 0);
+
+        // 门隙部分
+        commandList.DrawIndexedInstanced(24, 1, 24, 0, 0);
+
+        // 上门隙部分
+        commandList.DrawIndexedInstanced(96, 1, 48, 0, 0);
+    }
+}
+
+internal sealed class MirrorDoor : Door {
+    private static new readonly Vertex[] VertexArray = [
+        // 门上部分
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 2, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(1, 1, 0, 1), TexCoordUV = new(0, 1) },
+        new() { Position = new(0, 1, 0, 1), TexCoordUV = new(1, 1) },
+
+        new() { Position = new(1, 2, 0.2f, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 2, 0.2f, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(0, 1, 0.2f, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 1, 0.2f, 1), TexCoordUV = new(0, 1) },
+
+        // 门下部分
+        new() { Position = new(0, 1, 0, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(1, 1, 0, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 1) },
+
+        new() { Position = new(1, 1, 0.2f, 1), TexCoordUV = new(0, 0) },
+        new() { Position = new(0, 1, 0.2f, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(0, 0, 0.2f, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0, 0.2f, 1), TexCoordUV = new(0, 1) },
+
+        // 门隙部分
+        new() { Position = new(0, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(1, 2, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 2, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        // 上部分门隙
+        new() { Position = new(0.1875f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.4375f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.1875f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.1875f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.4375f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.4375f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.8125f, 1.5f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.5f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.3125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.5625f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.5625f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+
+        new() { Position = new(0.8125f, 1.8125f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.8125f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+        new() { Position = new(0.8125f, 1.625f, 0.2f, 1), TexCoordUV = new(0.1875f, 0.4375f) },
+    ];
+
+    public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
+
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Height = 1,
+            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1, Quality = 0 },
+        };
+
+        var heapProperties = new D3D12_HEAP_PROPERTIES() {
+            Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+        };
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _vertexResource);
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _modelMatrixResource);
+
+        uploadResourceDesc.Width = (ulong)(IndexArray.Length * sizeof(uint));
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _indexResource);
+
+        MapWriteUnmap(_vertexResource, VertexArray);
+        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        matrixSpan.Fill(ModelMatrix);
+        MapWriteUnmap(_modelMatrixResource, matrixSpan);
+        MapWriteUnmap(_indexResource, IndexArray);
+
+        _vertexBufferView[0].BufferLocation = _vertexResource.GetGPUVirtualAddress();
+        _vertexBufferView[0].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        _vertexBufferView[0].StrideInBytes = (uint)Unsafe.SizeOf<Vertex>();
+
+        _vertexBufferView[1].BufferLocation = _modelMatrixResource.GetGPUVirtualAddress();
+        _vertexBufferView[1].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        _vertexBufferView[1].StrideInBytes = (uint)Unsafe.SizeOf<Matrix4x4>();
+
+        _indexBufferView.BufferLocation = _indexResource.GetGPUVirtualAddress();
+        _indexBufferView.SizeInBytes = (uint)(IndexArray.Length * sizeof(uint));
+        _indexBufferView.Format = DXGI_FORMAT.DXGI_FORMAT_R32_UINT;
+    }
+}
+
+internal sealed class Bed : Model {
+    private static readonly Vertex[] VertexArray = [
+        // 床脚正面
+        new() { Position = new(0, 0.5f, 0, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(1, 0.5f, 0, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 1) },
+
+        // 床头正面
+        new() { Position = new(1, 0.5f, 2, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(0, 0.5f, 2, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(0, 0, 2, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0, 2, 1), TexCoordUV = new(0, 1) },
+
+        // 床顶
+        new() { Position = new(0, 0.5f, 2, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 0.5f, 2, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0.5f, 1, 1), TexCoordUV = new(0, 1) },
+        new() { Position = new(0, 0.5f, 1, 1), TexCoordUV = new(0, 0) },
+
+        new() { Position = new(0, 0.5f, 1, 1), TexCoordUV = new(1, 0) },
+        new() { Position = new(1, 0.5f, 1, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0.5f, 0, 1), TexCoordUV = new(0, 1) },
+        new() { Position = new(0, 0.5f, 0, 1), TexCoordUV = new(0, 0) },
+
+        // 床头一侧
+        new() { Position = new(0, 0.5f, 2, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(0, 0.5f, 1, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(0, 0, 1, 1), TexCoordUV = new(0, 1) },
+        new() { Position = new(0, 0, 2, 1), TexCoordUV = new(1, 1) },
+
+        new() { Position = new(1, 0.5f, 1, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(1, 0.5f, 2, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(1, 0, 2, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0, 1, 1), TexCoordUV = new(0, 1) },
+
+        // 床脚一侧
+        new() { Position = new(0, 0.5f, 1, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(0, 0.5f, 0, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(0, 0, 0, 1), TexCoordUV = new(0, 1) },
+        new() { Position = new(0, 0, 1, 1), TexCoordUV = new(1, 1) },
+
+        new() { Position = new(1, 0.5f, 0, 1), TexCoordUV = new(0, 0.5f) },
+        new() { Position = new(1, 0.5f, 1, 1), TexCoordUV = new(1, 0.5f) },
+        new() { Position = new(1, 0, 1, 1), TexCoordUV = new(1, 1) },
+        new() { Position = new(1, 0, 0, 1), TexCoordUV = new(0, 1) },
+    ];
+
+    private static readonly uint[] IndexArray = [
+        // 床脚正面
+        0, 1, 2, 0, 2, 3,
+
+        // 床头正面
+        4, 5, 6, 4, 6, 7,
+
+        // 床顶
+        8, 9, 10, 8, 10, 11,
+        12, 13, 14, 12, 14, 15,
+
+        // 床头一侧
+        16, 17, 18, 16, 18, 19,
+        20, 21, 22, 20, 22, 23,
+
+        // 床脚一侧
+        24, 25, 26, 24, 26, 27,
+        28, 29, 30, 28, 30, 31
+    ];
+
+    public Bed() {
+        _textureNameSet = ["bed_feet_end", "bed_feet_side", "bed_feet_top", "bed_head_top", "bed_head_side", "bed_head_end"];
+    }
+
+    public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
+
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Height = 1,
+            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1, Quality = 0 },
+        };
+
+        var heapProperties = new D3D12_HEAP_PROPERTIES() {
+            Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+        };
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _vertexResource);
+
+        uploadResourceDesc.Width = (ulong)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _modelMatrixResource);
+
+        uploadResourceDesc.Width = (ulong)(IndexArray.Length * sizeof(uint));
+        d3d12Device.CreateCommittedResource(
+            heapProperties,
+            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _indexResource);
+
+        MapWriteUnmap(_vertexResource, VertexArray);
+        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        matrixSpan.Fill(ModelMatrix);
+        MapWriteUnmap(_modelMatrixResource, matrixSpan);
+        MapWriteUnmap(_indexResource, IndexArray);
+
+        _vertexBufferView[0].BufferLocation = _vertexResource.GetGPUVirtualAddress();
+        _vertexBufferView[0].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Vertex>());
+        _vertexBufferView[0].StrideInBytes = (uint)Unsafe.SizeOf<Vertex>();
+
+        _vertexBufferView[1].BufferLocation = _modelMatrixResource.GetGPUVirtualAddress();
+        _vertexBufferView[1].SizeInBytes = (uint)(VertexArray.Length * Unsafe.SizeOf<Matrix4x4>());
+        _vertexBufferView[1].StrideInBytes = (uint)Unsafe.SizeOf<Matrix4x4>();
+
+        _indexBufferView.BufferLocation = _indexResource.GetGPUVirtualAddress();
+        _indexBufferView.SizeInBytes = (uint)(IndexArray.Length * sizeof(uint));
+        _indexBufferView.Format = DXGI_FORMAT.DXGI_FORMAT_R32_UINT;
+    }
+
+    public override void DrawModel(ID3D12GraphicsCommandList commandList) {
+        commandList.IASetIndexBuffer(_indexBufferView);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+
+        // 床脚正面
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["bed_feet_end"]);
+        commandList.DrawIndexedInstanced(6, 1, 0, 0, 0);
+
+        // 床头正面
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["bed_head_end"]);
+        commandList.DrawIndexedInstanced(6, 1, 6, 0, 0);
+
+        // 床顶
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["bed_head_top"]);
+        commandList.DrawIndexedInstanced(6, 1, 12, 0, 0);
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["bed_feet_top"]);
+        commandList.DrawIndexedInstanced(6, 1, 18, 0, 0);
+
+        // 床头一侧
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["bed_head_side"]);
+        commandList.DrawIndexedInstanced(12, 1, 24, 0, 0);
+
+        // 床脚一侧
+        commandList.SetGraphicsRootDescriptorTable(1, TextureGPUHandleMap["bed_feet_side"]);
+        commandList.DrawIndexedInstanced(12, 1, 36, 0, 0);
+    }
+}
+
 internal sealed class TextureMapInfo {
     public string TextureFilePath { get; set; }
     public ComPtr<ID3D12Resource> DefaultHeapTextureResource { get; set; }
@@ -670,7 +1289,9 @@ internal sealed class TextureMapInfo {
 internal sealed class ModelManager {
 
     private readonly Dictionary<string, TextureMapInfo> _textureSRVMap = [];
-    private readonly List<Model> _modelGroup = [];
+    private readonly List<Model> _opaqueGroup = [];
+    private readonly List<Model> _transparentGroup = [];
+    private readonly List<Model> _translucenceGroup = [];
 
     public IReadOnlyDictionary<string, TextureMapInfo> TextureSRVMap => _textureSRVMap;
 
@@ -688,6 +1309,15 @@ internal sealed class ModelManager {
         _textureSRVMap["crafting_table_top"] = new() { TextureFilePath = "resource/crafting_table_top.png" };
         _textureSRVMap["planks_oak"] = new() { TextureFilePath = "resource/planks_oak.png" };
 
+        _textureSRVMap["glass_light_blue"] = new() { TextureFilePath = "resource/glass_light_blue.png" };
+        _textureSRVMap["door_wood_lower"] = new() { TextureFilePath = "resource/door_wood_lower.png" };
+        _textureSRVMap["door_wood_upper"] = new() { TextureFilePath = "resource/door_wood_upper.png" };
+        _textureSRVMap["bed_feet_end"] = new() { TextureFilePath = "resource/bed_feet_end.png" };
+        _textureSRVMap["bed_feet_side"] = new() { TextureFilePath = "resource/bed_feet_side.png" };
+        _textureSRVMap["bed_feet_top"] = new() { TextureFilePath = "resource/bed_feet_top.png" };
+        _textureSRVMap["bed_head_end"] = new() { TextureFilePath = "resource/bed_head_end.png" };
+        _textureSRVMap["bed_head_side"] = new() { TextureFilePath = "resource/bed_head_side.png" };
+        _textureSRVMap["bed_head_top"] = new() { TextureFilePath = "resource/bed_head_top.png" };
     }
 
     public void CreateBlock() {
@@ -698,7 +1328,7 @@ internal sealed class ModelManager {
                     var dirt = new Dirt {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, z)
                     };
-                    _modelGroup.Add(dirt);
+                    _opaqueGroup.Add(dirt);
                 }
             }
         }
@@ -709,7 +1339,7 @@ internal sealed class ModelManager {
                 var grass = new Grass {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 0, z)
                 };
-                _modelGroup.Add(grass);
+                _opaqueGroup.Add(grass);
             }
         }
 
@@ -719,7 +1349,7 @@ internal sealed class ModelManager {
                 var plank = new PlanksOak() {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 2, z)
                 };
-                _modelGroup.Add(plank);
+                _opaqueGroup.Add(plank);
             }
         }
 
@@ -729,56 +1359,56 @@ internal sealed class ModelManager {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(3, y, 2)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         for (int y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, y, 3)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         for (int y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(6, y, 2)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         for (int y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, y, 3)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         for (int y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, y, 6)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         for (int y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(6, y, 7)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         for (int y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, y, 6)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         for (int y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(3, y, 7)
             };
-            _modelGroup.Add(logOak);
+            _opaqueGroup.Add(logOak);
         }
 
         // 其他木板与门前台阶
@@ -786,19 +1416,19 @@ internal sealed class ModelManager {
             var plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 2, 2)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 2, 2)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             for (int y = 5; y < 7; y++) {
                 for (int x = 4; x < 6; x++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, 2)
                     };
-                    _modelGroup.Add(plank);
+                    _opaqueGroup.Add(plank);
                 }
             }
 
@@ -807,7 +1437,7 @@ internal sealed class ModelManager {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(2, y, z)
                     };
-                    _modelGroup.Add(plank);
+                    _opaqueGroup.Add(plank);
                 }
             }
 
@@ -816,7 +1446,7 @@ internal sealed class ModelManager {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, 7)
                     };
-                    _modelGroup.Add(plank);
+                    _opaqueGroup.Add(plank);
                 }
             }
 
@@ -825,59 +1455,59 @@ internal sealed class ModelManager {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(7, y, z)
                     };
-                    _modelGroup.Add(plank);
+                    _opaqueGroup.Add(plank);
                 }
             }
 
             plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, 6, 4)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, 6, 5)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 6, 7)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 6, 7)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, 6, 4)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             plank = new PlanksOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, 6, 5)
             };
-            _modelGroup.Add(plank);
+            _opaqueGroup.Add(plank);
 
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 2, 1)
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
 
             stair = new PlanksOakSoildStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 2, 1)
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
 
             stair = new PlanksOakSoildStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 1, 0)
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
 
             stair = new PlanksOakSoildStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 1, 0)
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         // 4x4 木板房顶
@@ -886,7 +1516,7 @@ internal sealed class ModelManager {
                 var plank = new PlanksOak {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 6, z)
                 };
-                _modelGroup.Add(plank);
+                _opaqueGroup.Add(plank);
             }
         }
 
@@ -897,7 +1527,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 6, 1)
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         for (int x = 3; x < 7; x++) {
@@ -914,7 +1544,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = transform
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         for (int z = 3; z < 7; z++) {
@@ -926,7 +1556,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = transform
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         for (int z = 3; z < 7; z++) {
@@ -938,7 +1568,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = transform
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         // 第二层
@@ -946,7 +1576,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 7, 2)
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         for (int x = 3; x < 7; x++) {
@@ -958,7 +1588,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = transform
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         for (int z = 3; z < 7; z++) {
@@ -970,7 +1600,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = transform
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         for (int z = 3; z < 7; z++) {
@@ -982,7 +1612,7 @@ internal sealed class ModelManager {
             var stair = new PlanksOakSoildStair {
                 ModelMatrix = transform
             };
-            _modelGroup.Add(stair);
+            _opaqueGroup.Add(stair);
         }
 
         // 补上屋顶空位
@@ -991,7 +1621,7 @@ internal sealed class ModelManager {
                 var plank = new PlanksOak {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 7, z)
                 };
-                _modelGroup.Add(plank);
+                _opaqueGroup.Add(plank);
             }
         }
 
@@ -1000,30 +1630,94 @@ internal sealed class ModelManager {
         var craftTable = new CraftingTable {
             ModelMatrix = Matrix4x4.CreateTranslation(3, 3, 6)
         };
-        _modelGroup.Add(craftTable);
+        _opaqueGroup.Add(craftTable);
 
         var furnace = new Furnace {
             ModelMatrix = Matrix4x4.CreateTranslation(4, 3, 6)
         };
-        _modelGroup.Add(furnace);
+        _opaqueGroup.Add(furnace);
 
         furnace = new Furnace {
             ModelMatrix = Matrix4x4.CreateTranslation(5, 3, 6)
         };
-        _modelGroup.Add(furnace);
+        _opaqueGroup.Add(furnace);
+
+        // 门
+        var door = new Door {
+            ModelMatrix = Matrix4x4.CreateTranslation(4, 3, 2)
+        };
+        _transparentGroup.Add(door);
+
+        var mirrorDoor = new MirrorDoor {
+            ModelMatrix = Matrix4x4.CreateTranslation(5, 3, 2)
+        };
+        _transparentGroup.Add(mirrorDoor);
+
+        // 床
+        var bed = new Bed {
+            ModelMatrix = Matrix4x4.CreateTranslation(6, 3, 5)
+        };
+        _transparentGroup.Add(bed);
+
+        // 玻璃
+        for (int y = 4; y < 6; y++) {
+            for (int z = 4; z < 6; z++) {
+                var glass = new GlassLightBlue {
+                    ModelMatrix = Matrix4x4.CreateTranslation(2, y, z)
+                };
+                _translucenceGroup.Add(glass);
+            }
+            for (int z = 4; z < 6; z++) {
+                var glass = new GlassLightBlue {
+                    ModelMatrix = Matrix4x4.CreateTranslation(7, y, z)
+                };
+                _translucenceGroup.Add(glass);
+            }
+        }
+
+        for (int x = 4; x < 6; x++) {
+            for (int y = 4; y < 6; y++) {
+                var glass = new GlassLightBlue {
+                    ModelMatrix = Matrix4x4.CreateTranslation(x, y, 7)
+                };
+                _translucenceGroup.Add(glass);
+            }
+        }
 
     }
 
     public void CreateModelResource(ID3D12Device4 d3d12Device) {
         var globalTextureGPUHandleMap = _textureSRVMap.ToDictionary(kv => kv.Key, kv => kv.Value.GPUHandle);
-        foreach (var model in _modelGroup) {
+        foreach (var model in _opaqueGroup) {
+            model.CreateResourceAndDescriptor(d3d12Device);
+            model.BuildTextureGPUHandleMap(globalTextureGPUHandleMap);
+        }
+
+        foreach (var model in _transparentGroup) {
+            model.CreateResourceAndDescriptor(d3d12Device);
+            model.BuildTextureGPUHandleMap(globalTextureGPUHandleMap);
+        }
+
+        foreach (var model in _translucenceGroup) {
             model.CreateResourceAndDescriptor(d3d12Device);
             model.BuildTextureGPUHandleMap(globalTextureGPUHandleMap);
         }
     }
 
-    public void RenderAllModel(ID3D12GraphicsCommandList commandList) {
-        foreach (var model in _modelGroup) {
+    public void RenderOpaqueModel(ID3D12GraphicsCommandList commandList) {
+        foreach (var model in _opaqueGroup) {
+            model.DrawModel(commandList);
+        }
+    }
+
+    public void RenderTransparentModel(ID3D12GraphicsCommandList commandList) {
+        foreach (var model in _transparentGroup) {
+            model.DrawModel(commandList);
+        }
+    }
+
+    public void RenderTranslucenceModel(ID3D12GraphicsCommandList commandList) {
+        foreach (var model in _translucenceGroup) {
             model.DrawModel(commandList);
         }
     }
@@ -1113,7 +1807,18 @@ internal sealed class DX12Engine {
 
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
-    private ID3D12PipelineState _pipelineStateObject;
+    private static readonly PCSTR Position = CreatePCSTR("POSITION");
+    private static readonly PCSTR TexCoord = CreatePCSTR("TEXCOORD");
+    private static readonly PCSTR Matrix = CreatePCSTR("MATRIX");
+
+    private readonly D3D12_INPUT_ELEMENT_DESC[] _inputElementDesc = new D3D12_INPUT_ELEMENT_DESC[6];
+
+    private D3D12_GRAPHICS_PIPELINE_STATE_DESC _opaquePSODesc;
+    private ID3D12PipelineState _opaquePSO;
+    private D3D12_GRAPHICS_PIPELINE_STATE_DESC _transparentPSODesc;
+    private ID3D12PipelineState _transparentPSO;
+    private D3D12_GRAPHICS_PIPELINE_STATE_DESC _translucencePSODesc;
+    private ID3D12PipelineState _translucencePSO;
 
     private readonly Camera _firstCamera = new();
 
@@ -1678,19 +2383,10 @@ internal sealed class DX12Engine {
         _rootSignature = new(rootSignature);
     }
 
-    private unsafe void CreatePSO() {
-        var psoDesc = new D3D12_GRAPHICS_PIPELINE_STATE_DESC();
-
-        var inputLayoutDesc = new D3D12_INPUT_LAYOUT_DESC();
-        var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[6];
-
-        var semanticNamePosition = "POSITION"u8;
-        byte* pSemanticNamePosition = stackalloc byte[semanticNamePosition.Length + 1];
-        semanticNamePosition.CopyTo(new Span<byte>(pSemanticNamePosition, semanticNamePosition.Length));
-        pSemanticNamePosition[semanticNamePosition.Length] = 0;
-
-        inputElementDesc[0] = new() {
-            SemanticName = new(pSemanticNamePosition),
+    // 这里的代码和原教程不同，只将 D3D12_INPUT_ELEMENT_DESC 作为成员变量保存
+    private void CreateInputLayout() {
+        _inputElementDesc[0] = new() {
+            SemanticName = Position,
             SemanticIndex = 0,
             Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
             InputSlot = 0,
@@ -1700,13 +2396,8 @@ internal sealed class DX12Engine {
             InstanceDataStepRate = 0,
         };
 
-        var semanticNameTexCoord = "TEXCOORD"u8;
-        byte* pSemanticNameTexCoord = stackalloc byte[semanticNameTexCoord.Length + 1];
-        semanticNameTexCoord.CopyTo(new Span<byte>(pSemanticNameTexCoord, semanticNameTexCoord.Length));
-        pSemanticNameTexCoord[semanticNameTexCoord.Length] = 0;
-
-        inputElementDesc[1] = new() {
-            SemanticName = new(pSemanticNameTexCoord),
+        _inputElementDesc[1] = new() {
+            SemanticName = TexCoord,
             SemanticIndex = 0,
             Format = DXGI_FORMAT.DXGI_FORMAT_R32G32_FLOAT,
             InputSlot = 0,
@@ -1717,14 +2408,9 @@ internal sealed class DX12Engine {
             InstanceDataStepRate = 0,
         };
 
-        var semanticNameMatrix = "MATRIX"u8;
-        byte* pSemanticNameMatrix = stackalloc byte[semanticNameMatrix.Length + 1];
-        semanticNameMatrix.CopyTo(new Span<byte>(pSemanticNameMatrix, semanticNameMatrix.Length));
-        pSemanticNameMatrix[semanticNameMatrix.Length] = 0;
-
         for (uint i = 0; i < 4; i++) {
-            inputElementDesc[2 + i] = new() {
-                SemanticName = new(pSemanticNameMatrix),
+            _inputElementDesc[2 + i] = new() {
+                SemanticName = Matrix,
                 SemanticIndex = i,
                 Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
                 InputSlot = 1,
@@ -1733,13 +2419,12 @@ internal sealed class DX12Engine {
                 InstanceDataStepRate = 0,
             };
         }
+    }
 
-        inputLayoutDesc.NumElements = 6;
-        inputLayoutDesc.pInputElementDescs = inputElementDesc;
-        psoDesc.InputLayout = inputLayoutDesc;
+    private unsafe void CreateOpaquePSO() {
 
         D3DCompileFromFile(
-            "shader.hlsl",
+            "OpaqueShader.hlsl",
             null,
             null,
             "VSMain",
@@ -1759,7 +2444,7 @@ internal sealed class DX12Engine {
         }
 
         D3DCompileFromFile(
-            "shader.hlsl",
+            "OpaqueShader.hlsl",
             null,
             null,
             "PSMain",
@@ -1778,31 +2463,179 @@ internal sealed class DX12Engine {
             Debug.WriteLine(errorMessage);
         }
 
-        psoDesc.VS.pShaderBytecode = vertexShaderBlob.GetBufferPointer();
-        psoDesc.VS.BytecodeLength = vertexShaderBlob.GetBufferSize();
+        _opaquePSODesc.VS.pShaderBytecode = vertexShaderBlob.GetBufferPointer();
+        _opaquePSODesc.VS.BytecodeLength = vertexShaderBlob.GetBufferSize();
 
-        psoDesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
-        psoDesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
+        _opaquePSODesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
+        _opaquePSODesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_BACK;
-        psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE.D3D12_FILL_MODE_SOLID;
+        _opaquePSODesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_BACK;
+        _opaquePSODesc.RasterizerState.FillMode = D3D12_FILL_MODE.D3D12_FILL_MODE_SOLID;
 
-        psoDesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
+        _opaquePSODesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
 
-        psoDesc.DSVFormat = _dsvFormat;
-        psoDesc.DepthStencilState.DepthEnable = true;
-        psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC.D3D12_COMPARISON_FUNC_LESS;
-        psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK.D3D12_DEPTH_WRITE_MASK_ALL;
+        _opaquePSODesc.DSVFormat = _dsvFormat;
+        _opaquePSODesc.DepthStencilState.DepthEnable = true;
+        _opaquePSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC.D3D12_COMPARISON_FUNC_LESS;
+        _opaquePSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK.D3D12_DEPTH_WRITE_MASK_ALL;
 
-        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE.D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-        psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats._0 = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE.D3D12_COLOR_WRITE_ENABLE_ALL;
-        psoDesc.SampleDesc.Count = 1;
-        psoDesc.SampleMask = uint.MaxValue;
+        _opaquePSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE.D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        _opaquePSODesc.NumRenderTargets = 1;
+        _opaquePSODesc.RTVFormats._0 = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM;
+        _opaquePSODesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE.D3D12_COLOR_WRITE_ENABLE_ALL;
+        _opaquePSODesc.SampleDesc.Count = 1;
+        _opaquePSODesc.SampleMask = uint.MaxValue;
 
-        _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObject);
+        fixed (D3D12_INPUT_ELEMENT_DESC* pInputElementDesc = _inputElementDesc) {
+            _opaquePSODesc.InputLayout = new() { NumElements = (uint)_inputElementDesc.Length, pInputElementDescs = pInputElementDesc };
+
+            _d3d12Device.CreateGraphicsPipelineState(_opaquePSODesc, out _opaquePSO);
+        }
     }
+
+    private unsafe void CreateTransparentPSO() {
+
+        _transparentPSODesc = _opaquePSODesc;
+
+        D3DCompileFromFile(
+            "TransparentShader.hlsl",
+            null,
+            null,
+            "VSMain",
+            "vs_5_1",
+#if DEBUG
+            D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+#else
+            0,
+#endif
+            0,
+            out var vertexShaderBlob,
+            out var errorBlobVS).ThrowOnFailure();
+
+        if (errorBlobVS != null) {
+            var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
+            Debug.WriteLine(errorMessage);
+        }
+
+        D3DCompileFromFile(
+            "TransparentShader.hlsl",
+            null,
+            null,
+            "PSMain",
+            "ps_5_1",
+#if DEBUG
+            D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+#else
+            0,
+#endif
+            0,
+            out var pixelShaderBlob,
+            out var errorBlobPS).ThrowOnFailure();
+
+        if (errorBlobPS != null) {
+            var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());
+            Debug.WriteLine(errorMessage);
+        }
+
+        _transparentPSODesc.VS.pShaderBytecode = vertexShaderBlob.GetBufferPointer();
+        _transparentPSODesc.VS.BytecodeLength = vertexShaderBlob.GetBufferSize();
+
+        _transparentPSODesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
+        _transparentPSODesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
+
+        // 关闭背面剔除
+        _transparentPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_NONE;
+
+        fixed (D3D12_INPUT_ELEMENT_DESC* pInputElementDesc = _inputElementDesc) {
+            _transparentPSODesc.InputLayout = new() { NumElements = (uint)_inputElementDesc.Length, pInputElementDescs = pInputElementDesc };
+
+            _d3d12Device.CreateGraphicsPipelineState(_transparentPSODesc, out _transparentPSO);
+        }
+    }
+
+    private unsafe void CreateTranslucencePSO() {
+
+        _translucencePSODesc = _opaquePSODesc;
+
+        D3DCompileFromFile(
+            "TranslucenceShader.hlsl",
+            null,
+            null,
+            "VSMain",
+            "vs_5_1",
+#if DEBUG
+            D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+#else
+            0,
+#endif
+            0,
+            out var vertexShaderBlob,
+            out var errorBlobVS).ThrowOnFailure();
+
+        if (errorBlobVS != null) {
+            var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
+            Debug.WriteLine(errorMessage);
+        }
+
+        D3DCompileFromFile(
+            "TranslucenceShader.hlsl",
+            null,
+            null,
+            "PSMain",
+            "ps_5_1",
+#if DEBUG
+            D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+#else
+            0,
+#endif
+            0,
+            out var pixelShaderBlob,
+            out var errorBlobPS).ThrowOnFailure();
+
+        if (errorBlobPS != null) {
+            var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());
+            Debug.WriteLine(errorMessage);
+        }
+
+        _translucencePSODesc.VS.pShaderBytecode = vertexShaderBlob.GetBufferPointer();
+        _translucencePSODesc.VS.BytecodeLength = vertexShaderBlob.GetBufferSize();
+
+        _translucencePSODesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
+        _translucencePSODesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
+
+        // 关闭背面剔除
+        _translucencePSODesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_NONE;
+
+        // 关闭深度写入，但仍然保留深度测试
+        _translucencePSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK.D3D12_DEPTH_WRITE_MASK_ZERO;
+
+        // 结果色彩 = 上层色彩 * 上层色彩 alpha + 下层色彩 * (1 - 上层色彩 alpha)，这套公式仅适用于下层是不透明物体的情况
+        // Src = 源色彩 = 上层色彩，Dest = 目标色彩 = 下层色彩
+        // SrcA = 源色彩 Alpha 值，DstA = 目标色彩 Alpha 值
+        // Result = Src * SrcA + Dest * (1 - SrcA)
+
+        // 开启混合
+        _translucencePSODesc.BlendState.RenderTarget._0.BlendEnable = true;
+
+        // 下面三个选项控制 RGB 通道的混合，Alpha 通道与 RGB 通道的混合是分开的，这一点请留意！
+        // Result = Src * SrcA + Dest * (1 - SrcA)
+        _translucencePSODesc.BlendState.RenderTarget._0.SrcBlend = D3D12_BLEND.D3D12_BLEND_SRC_ALPHA;
+        _translucencePSODesc.BlendState.RenderTarget._0.DestBlend = D3D12_BLEND.D3D12_BLEND_INV_SRC_ALPHA;
+        _translucencePSODesc.BlendState.RenderTarget._0.BlendOp = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
+
+        // 下面的三个选项控制 Alpha 通道的混合，Alpha 通道与 RGB 通道的混合是分开的，这一点请留意！
+        // ResultA = SrcA * 1 + DstA * 0
+        _translucencePSODesc.BlendState.RenderTarget._0.SrcBlendAlpha = D3D12_BLEND.D3D12_BLEND_ONE;
+        _translucencePSODesc.BlendState.RenderTarget._0.DestBlendAlpha = D3D12_BLEND.D3D12_BLEND_ZERO;
+        _translucencePSODesc.BlendState.RenderTarget._0.BlendOpAlpha = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
+
+        fixed (D3D12_INPUT_ELEMENT_DESC* pInputElementDesc = _inputElementDesc) {
+            _translucencePSODesc.InputLayout = new() { NumElements = (uint)_inputElementDesc.Length, pInputElementDescs = pInputElementDesc };
+
+            _d3d12Device.CreateGraphicsPipelineState(_translucencePSODesc, out _translucencePSO);
+        }
+    }
+
 
     private unsafe void UpdateConstantBuffer() {
         Unsafe.AsRef<CBuffer>((void*)mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
@@ -1824,7 +2657,6 @@ internal sealed class DX12Engine {
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.SetGraphicsRootSignature(_rootSignature.Managed);
-        _commandList.SetPipelineState(_pipelineStateObject);
 
         _commandList.RSSetViewports([_viewPort]);
         _commandList.RSSetScissorRects([_scissorRect]);
@@ -1841,7 +2673,17 @@ internal sealed class DX12Engine {
 
         _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        _modelManager.RenderAllModel(_commandList);
+        // 先设置 Opaque PSO，渲染不透明物体
+        _commandList.SetPipelineState(_opaquePSO);
+        _modelManager.RenderOpaqueModel(_commandList);
+
+        // 再设置 Transparent PSO，渲染透明物体
+        _commandList.SetPipelineState(_transparentPSO);
+        _modelManager.RenderTransparentModel(_commandList);
+
+        // 最后设置 Translucence PSO，渲染半透明物体
+        _commandList.SetPipelineState(_translucencePSO);
+        _modelManager.RenderTranslucenceModel(_commandList);
 
         _endBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_endBarrier]);
@@ -1959,7 +2801,10 @@ internal sealed class DX12Engine {
         engine.CreateCBVResource();
 
         engine.CreateRootSignature();
-        engine.CreatePSO();
+        engine.CreateInputLayout();
+        engine.CreateOpaquePSO();
+        engine.CreateTransparentPSO();
+        engine.CreateTranslucencePSO();
 
         engine.RenderLoop();
     }
