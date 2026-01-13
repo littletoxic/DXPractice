@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DXDemo8WBOIT": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
