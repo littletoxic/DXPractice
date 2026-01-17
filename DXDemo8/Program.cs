@@ -2175,7 +2175,7 @@ internal sealed class DX12Engine {
     private unsafe void CopyTextureDataToDefaultResource(TextureMapInfo info) {
         var textureData = ArrayPool<byte>.Shared.Rent((int)_textureSize);
 
-        _wicBitmapSource.CopyPixels(null, _bytesPerRowSize, (uint)textureData.Length, textureData);
+        _wicBitmapSource.CopyPixels(default, _bytesPerRowSize, textureData);
 
         info.UploadHeapTextureResource.Managed.Map(0, null, out var transferPointer);
 
