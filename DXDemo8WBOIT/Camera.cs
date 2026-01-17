@@ -24,8 +24,6 @@ internal sealed class Camera {
     private const float NearZ = 0.1f;            // 近平面到原点的距离
     private const float FarZ = 1000f;            // 远平面到原点的距离
 
-    // 模型矩阵，这里我们让模型旋转 30° 就行，注意这里只是一个示例，后文我们会将它移除，每个模型都应该拥有相对独立的模型矩阵
-    private Matrix4x4 _modelMatrix;
     // 观察矩阵，注意前两个参数是点，第三个参数才是向量
     private Matrix4x4 _viewMatrix;
     // 投影矩阵(注意近平面和远平面距离不能 <= 0!)
@@ -45,7 +43,7 @@ internal sealed class Camera {
     }
 
     internal Camera() {
-        _modelMatrix = Matrix4x4.CreateRotationY(30.0f);  // 模型矩阵，模型空间 -> 世界空间
+        // 注意！我们这里移除了模型矩阵！每个模型会指定具体的模型矩阵！
         _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
         _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
 
