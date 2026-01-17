@@ -1,27 +1,26 @@
 ﻿using System.Collections.Frozen;
 using Windows.Win32.Graphics.Dxgi.Common;
-using static Windows.Win32.PInvoke;
 
 namespace DXDemo8WBOIT;
 
 internal static class DX12TextureHelper {
 
     private static readonly FrozenDictionary<Guid, DXGI_FORMAT> WicToDxgiFormat = FrozenDictionary.ToFrozenDictionary<Guid, DXGI_FORMAT>([
-        new(GUID_WICPixelFormat128bppRGBAFloat, DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT),
-        new(GUID_WICPixelFormat64bppRGBAHalf, DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT),
-        new(GUID_WICPixelFormat64bppRGBA, DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_UNORM),
-        new(GUID_WICPixelFormat32bppRGBA, DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM),
-        new(GUID_WICPixelFormat32bppBGRA, DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM),
-        new(GUID_WICPixelFormat32bppBGR, DXGI_FORMAT.DXGI_FORMAT_B8G8R8X8_UNORM),
-        new(GUID_WICPixelFormat32bppRGBA1010102XR, DXGI_FORMAT.DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM),
-        new(GUID_WICPixelFormat32bppRGBA1010102, DXGI_FORMAT.DXGI_FORMAT_R10G10B10A2_UNORM),
-        new(GUID_WICPixelFormat16bppBGRA5551, DXGI_FORMAT.DXGI_FORMAT_B5G5R5A1_UNORM),
-        new(GUID_WICPixelFormat16bppBGR565, DXGI_FORMAT.DXGI_FORMAT_B5G6R5_UNORM),
-        new(GUID_WICPixelFormat32bppGrayFloat, DXGI_FORMAT.DXGI_FORMAT_R32_FLOAT),
-        new(GUID_WICPixelFormat16bppGrayHalf, DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT),
-        new(GUID_WICPixelFormat16bppGray, DXGI_FORMAT.DXGI_FORMAT_R16_UNORM),
-        new(GUID_WICPixelFormat8bppGray, DXGI_FORMAT.DXGI_FORMAT_R8_UNORM),
-        new(GUID_WICPixelFormat8bppAlpha, DXGI_FORMAT.DXGI_FORMAT_A8_UNORM)
+        new(GUID_WICPixelFormat128bppRGBAFloat, DXGI_FORMAT_R32G32B32A32_FLOAT),
+        new(GUID_WICPixelFormat64bppRGBAHalf, DXGI_FORMAT_R16G16B16A16_FLOAT),
+        new(GUID_WICPixelFormat64bppRGBA, DXGI_FORMAT_R16G16B16A16_UNORM),
+        new(GUID_WICPixelFormat32bppRGBA, DXGI_FORMAT_R8G8B8A8_UNORM),
+        new(GUID_WICPixelFormat32bppBGRA, DXGI_FORMAT_B8G8R8A8_UNORM),
+        new(GUID_WICPixelFormat32bppBGR, DXGI_FORMAT_B8G8R8X8_UNORM),
+        new(GUID_WICPixelFormat32bppRGBA1010102XR, DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM),
+        new(GUID_WICPixelFormat32bppRGBA1010102, DXGI_FORMAT_R10G10B10A2_UNORM),
+        new(GUID_WICPixelFormat16bppBGRA5551, DXGI_FORMAT_B5G5R5A1_UNORM),
+        new(GUID_WICPixelFormat16bppBGR565, DXGI_FORMAT_B5G6R5_UNORM),
+        new(GUID_WICPixelFormat32bppGrayFloat, DXGI_FORMAT_R32_FLOAT),
+        new(GUID_WICPixelFormat16bppGrayHalf, DXGI_FORMAT_R16_FLOAT),
+        new(GUID_WICPixelFormat16bppGray, DXGI_FORMAT_R16_UNORM),
+        new(GUID_WICPixelFormat8bppGray, DXGI_FORMAT_R8_UNORM),
+        new(GUID_WICPixelFormat8bppAlpha, DXGI_FORMAT_A8_UNORM)
     ]);
 
     private static readonly FrozenDictionary<Guid, Guid> WicConvert = FrozenDictionary.ToFrozenDictionary<Guid, Guid>([
@@ -84,5 +83,5 @@ internal static class DX12TextureHelper {
     // 查表确定兼容的最接近格式是哪个
     internal static bool GetTargetPixelFormat(Guid sourceFormat, out Guid targetFormat) => WicConvert.TryGetValue(sourceFormat, out targetFormat);
 
-    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT.DXGI_FORMAT_UNKNOWN;
+    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT_UNKNOWN;
 }

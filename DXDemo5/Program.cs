@@ -13,28 +13,27 @@ using Windows.Win32.Graphics.Dxgi.Common;
 using Windows.Win32.Graphics.Imaging;
 using Windows.Win32.System.Com;
 using Windows.Win32.UI.WindowsAndMessaging;
-using static Windows.Win32.PInvoke;
 
 namespace DXDemo5;
 
 internal static class DX12TextureHelper {
 
     private static readonly FrozenDictionary<Guid, DXGI_FORMAT> WicToDxgiFormat = FrozenDictionary.ToFrozenDictionary<Guid, DXGI_FORMAT>([
-        new(GUID_WICPixelFormat128bppRGBAFloat, DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT),
-        new(GUID_WICPixelFormat64bppRGBAHalf, DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT),
-        new(GUID_WICPixelFormat64bppRGBA, DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_UNORM),
-        new(GUID_WICPixelFormat32bppRGBA, DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM),
-        new(GUID_WICPixelFormat32bppBGRA, DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM),
-        new(GUID_WICPixelFormat32bppBGR, DXGI_FORMAT.DXGI_FORMAT_B8G8R8X8_UNORM),
-        new(GUID_WICPixelFormat32bppRGBA1010102XR, DXGI_FORMAT.DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM),
-        new(GUID_WICPixelFormat32bppRGBA1010102, DXGI_FORMAT.DXGI_FORMAT_R10G10B10A2_UNORM),
-        new(GUID_WICPixelFormat16bppBGRA5551, DXGI_FORMAT.DXGI_FORMAT_B5G5R5A1_UNORM),
-        new(GUID_WICPixelFormat16bppBGR565, DXGI_FORMAT.DXGI_FORMAT_B5G6R5_UNORM),
-        new(GUID_WICPixelFormat32bppGrayFloat, DXGI_FORMAT.DXGI_FORMAT_R32_FLOAT),
-        new(GUID_WICPixelFormat16bppGrayHalf, DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT),
-        new(GUID_WICPixelFormat16bppGray, DXGI_FORMAT.DXGI_FORMAT_R16_UNORM),
-        new(GUID_WICPixelFormat8bppGray, DXGI_FORMAT.DXGI_FORMAT_R8_UNORM),
-        new(GUID_WICPixelFormat8bppAlpha, DXGI_FORMAT.DXGI_FORMAT_A8_UNORM)
+        new(GUID_WICPixelFormat128bppRGBAFloat, DXGI_FORMAT_R32G32B32A32_FLOAT),
+        new(GUID_WICPixelFormat64bppRGBAHalf, DXGI_FORMAT_R16G16B16A16_FLOAT),
+        new(GUID_WICPixelFormat64bppRGBA, DXGI_FORMAT_R16G16B16A16_UNORM),
+        new(GUID_WICPixelFormat32bppRGBA, DXGI_FORMAT_R8G8B8A8_UNORM),
+        new(GUID_WICPixelFormat32bppBGRA, DXGI_FORMAT_B8G8R8A8_UNORM),
+        new(GUID_WICPixelFormat32bppBGR, DXGI_FORMAT_B8G8R8X8_UNORM),
+        new(GUID_WICPixelFormat32bppRGBA1010102XR, DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM),
+        new(GUID_WICPixelFormat32bppRGBA1010102, DXGI_FORMAT_R10G10B10A2_UNORM),
+        new(GUID_WICPixelFormat16bppBGRA5551, DXGI_FORMAT_B5G5R5A1_UNORM),
+        new(GUID_WICPixelFormat16bppBGR565, DXGI_FORMAT_B5G6R5_UNORM),
+        new(GUID_WICPixelFormat32bppGrayFloat, DXGI_FORMAT_R32_FLOAT),
+        new(GUID_WICPixelFormat16bppGrayHalf, DXGI_FORMAT_R16_FLOAT),
+        new(GUID_WICPixelFormat16bppGray, DXGI_FORMAT_R16_UNORM),
+        new(GUID_WICPixelFormat8bppGray, DXGI_FORMAT_R8_UNORM),
+        new(GUID_WICPixelFormat8bppAlpha, DXGI_FORMAT_A8_UNORM)
     ]);
 
     private static readonly FrozenDictionary<Guid, Guid> WicConvert = FrozenDictionary.ToFrozenDictionary<Guid, Guid>([
@@ -97,7 +96,7 @@ internal static class DX12TextureHelper {
     // 查表确定兼容的最接近格式是哪个
     internal static bool GetTargetPixelFormat(Guid sourceFormat, out Guid targetFormat) => WicConvert.TryGetValue(sourceFormat, out targetFormat);
 
-    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT.DXGI_FORMAT_UNKNOWN;
+    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT_UNKNOWN;
 }
 
 internal sealed class DX12Engine {
@@ -107,11 +106,11 @@ internal sealed class DX12Engine {
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
     private static readonly D3D_FEATURE_LEVEL[] DX12SupportLevels = [
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_1,        // 12.1
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_0,        // 12
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_1,        // 11.1
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0         // 11
+        D3D_FEATURE_LEVEL_12_2,        // 12.2
+        D3D_FEATURE_LEVEL_12_1,        // 12.1
+        D3D_FEATURE_LEVEL_12_0,        // 12
+        D3D_FEATURE_LEVEL_11_1,        // 11.1
+        D3D_FEATURE_LEVEL_11_0         // 11
     ];
 
     private const int WindowWidth = 640;
@@ -149,7 +148,7 @@ internal sealed class DX12Engine {
     private IWICBitmapFrameDecode _wicBitmapDecoderFrame;
     private IWICFormatConverter _wicFormatConverter;
     private IWICBitmapSource _wicBitmapSource;
-    private DXGI_FORMAT _textureFormat = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN;
+    private DXGI_FORMAT _textureFormat = DXGI_FORMAT_UNKNOWN;
     private uint _textureWidth;
     private uint _textureHeight;
     private uint _bitsPerPixel;
@@ -250,7 +249,7 @@ internal sealed class DX12Engine {
         D3D12GetDebugInterface(out _d3d12DebugDevice).ThrowOnFailure();
         _d3d12DebugDevice.EnableDebugLayer();
 
-        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
+        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
     }
 
     private bool CreateDevice() {
@@ -272,7 +271,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateCommandComponents() {
-        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE.D3D12_COMMAND_LIST_TYPE_DIRECT;
+        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
         var queueDesc = new D3D12_COMMAND_QUEUE_DESC() {
             Type = type,
@@ -293,7 +292,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateRenderTarget() {
-        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
         var rtvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = FrameCount,
@@ -305,9 +304,9 @@ internal sealed class DX12Engine {
             BufferCount = FrameCount,
             Width = WindowWidth,
             Height = WindowHeight,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM,
-            SwapEffect = DXGI_SWAP_EFFECT.DXGI_SWAP_EFFECT_FLIP_DISCARD,
-            BufferUsage = DXGI_USAGE.DXGI_USAGE_RENDER_TARGET_OUTPUT,
+            Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+            BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
             SampleDesc = new() {
                 Count = 1,
             },
@@ -341,18 +340,18 @@ internal sealed class DX12Engine {
     private void CreateFenceAndBarrier() {
         _renderEvent = CreateEvent(null, false, true, null);
 
-        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, out _fence);
+        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
         // 设置资源屏障
         // _beginBarrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
-        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
-        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         // _endBarrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
-        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
-        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
+        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     private bool LoadTextureFromFile() {
@@ -410,8 +409,8 @@ internal sealed class DX12Engine {
     private void CreateSRVHeap() {
         var srvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = 1,
-            Type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            Flags = D3D12_DESCRIPTOR_HEAP_FLAGS.D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
+            Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
         };
 
         _d3d12Device.CreateDescriptorHeap(srvHeapDesc, out _srvHeap);
@@ -434,11 +433,11 @@ internal sealed class DX12Engine {
 
 
         var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = _uploadResourceSize,
             Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
             MipLevels = 1,
             SampleDesc = new() { Count = 1 },
@@ -446,19 +445,19 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource<ID3D12Resource>(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+                Type = D3D12_HEAP_TYPE_UPLOAD,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             uploadResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out var uploadTextureResource);
         _uploadTextureResource = new(uploadTextureResource);
 
 
         var defaultResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_UNKNOWN,
+            Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
             Width = _textureWidth,
             Height = _textureHeight,
             Format = _textureFormat,
@@ -469,11 +468,11 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource<ID3D12Resource>(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_DEFAULT,
+                Type = D3D12_HEAP_TYPE_DEFAULT,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             defaultResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_COPY_DEST,
+            D3D12_RESOURCE_STATE_COPY_DEST,
             null,
             out var defaultTextureResource);
         _defaultTextureResource = new(defaultTextureResource);
@@ -509,13 +508,13 @@ internal sealed class DX12Engine {
             new(ref placedFootprint));
 
         var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
-            Type = D3D12_TEXTURE_COPY_TYPE.D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             Anonymous = new() { SubresourceIndex = 0 },
             pResource = (ID3D12Resource_unmanaged*)_defaultTextureResource.Ptr,
         };
 
         var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
-            Type = D3D12_TEXTURE_COPY_TYPE.D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
             Anonymous = new() { PlacedFootprint = placedFootprint },
             pResource = (ID3D12Resource_unmanaged*)_uploadTextureResource.Ptr,
         };
@@ -536,7 +535,7 @@ internal sealed class DX12Engine {
 
     private void CreateSRV() {
         var srvDescriptorDesc = new D3D12_SHADER_RESOURCE_VIEW_DESC() {
-            ViewDimension = D3D12_SRV_DIMENSION.D3D12_SRV_DIMENSION_TEXTURE2D,
+            ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
             Format = _textureFormat,
             Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             Anonymous = new() { Texture2D = new() { MipLevels = 1 } },
@@ -553,11 +552,11 @@ internal sealed class DX12Engine {
         uint cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = cBufferSize,
             Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
             MipLevels = 1,
             SampleDesc = new() { Count = 1 },
@@ -565,11 +564,11 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+                Type = D3D12_HEAP_TYPE_UPLOAD,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             cbvResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out _cbvResource);
 
@@ -582,7 +581,7 @@ internal sealed class DX12Engine {
 
 
         var srvDescriptorDesc = new D3D12_DESCRIPTOR_RANGE() {
-            RangeType = D3D12_DESCRIPTOR_RANGE_TYPE.D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
             NumDescriptors = 1,
             BaseShaderRegister = 0,
             RegisterSpace = 0,
@@ -595,8 +594,8 @@ internal sealed class DX12Engine {
         };
 
         rootParameters[0] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_PIXEL,
-            ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+            ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             Anonymous = new() { DescriptorTable = rootDescriptorTableDesc },
         };
 
@@ -607,24 +606,24 @@ internal sealed class DX12Engine {
         };
 
         rootParameters[1] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_ALL,
-            ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_CBV,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+            ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             Anonymous = new() { Descriptor = cbvRootDescriptor },
         };
 
         var staticSamplerDesc = new D3D12_STATIC_SAMPLER_DESC() {
             ShaderRegister = 0,
             RegisterSpace = 0,
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_PIXEL,
-            Filter = D3D12_FILTER.D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
-            AddressU = D3D12_TEXTURE_ADDRESS_MODE.D3D12_TEXTURE_ADDRESS_MODE_BORDER,
-            AddressV = D3D12_TEXTURE_ADDRESS_MODE.D3D12_TEXTURE_ADDRESS_MODE_BORDER,
-            AddressW = D3D12_TEXTURE_ADDRESS_MODE.D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+            Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+            AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+            AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+            AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             MinLOD = 0.0f,
             MaxLOD = D3D12_FLOAT32_MAX,
             MipLODBias = 0,
             MaxAnisotropy = 1,
-            ComparisonFunc = D3D12_COMPARISON_FUNC.D3D12_COMPARISON_FUNC_NEVER,
+            ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
         };
 
 
@@ -634,12 +633,12 @@ internal sealed class DX12Engine {
             NumStaticSamplers = 1,
             pStaticSamplers = &staticSamplerDesc,
             // 根签名标志，可以设置渲染管线不同阶段下的输入参数状态。注意这里！我们要从 IA 阶段输入顶点数据，所以要通过根签名，设置渲染管线允许从 IA 阶段读入数据
-            Flags = D3D12_ROOT_SIGNATURE_FLAGS.D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+            Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
         };
 
         D3D12SerializeRootSignature(
             rootSignatureDesc,
-            D3D_ROOT_SIGNATURE_VERSION.D3D_ROOT_SIGNATURE_VERSION_1_0,
+            D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
             out var errorBlob).ThrowOnFailure();
 
@@ -670,11 +669,11 @@ internal sealed class DX12Engine {
         inputElementDesc[0] = new() {
             SemanticName = new(pSemanticNamePosition),
             SemanticIndex = 0,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
+            Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
             InputSlot = 0,
             AlignedByteOffset = 0,
             // 输入流类型，一种是我们现在用的 D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA 逐顶点输入流,还有一种叫逐实例输入流，后面再学
-            InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
 
@@ -686,12 +685,12 @@ internal sealed class DX12Engine {
         inputElementDesc[1] = new() {
             SemanticName = new(pSemanticNameTexCoord),
             SemanticIndex = 0,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R32G32_FLOAT,
+            Format = DXGI_FORMAT_R32G32_FLOAT,
             InputSlot = 0,
             // 在输入槽中的偏移，因为 position 与 color 在同一输入槽(0号输入槽)
             // position 是 float4，有 4 个 float ，每个 float 占 4 个字节，所以要偏移 4*4=16 个字节，这样才能确定 color 参数的位置，不然装配的时候会覆盖原先 position 的数据
             AlignedByteOffset = 16,
-            InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
 
@@ -748,15 +747,15 @@ internal sealed class DX12Engine {
             BytecodeLength = pixelShaderBlob.GetBufferSize(),
         };
 
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_BACK;
-        psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE.D3D12_FILL_MODE_SOLID;
+        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+        psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 
         psoDesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
 
-        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE.D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats._0 = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE.D3D12_COLOR_WRITE_ENABLE_ALL;
+        psoDesc.RTVFormats._0 = DXGI_FORMAT_R8G8B8A8_UNORM;
+        psoDesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE_ALL;
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleMask = uint.MaxValue;
 
@@ -803,11 +802,11 @@ internal sealed class DX12Engine {
         ];
 
         var vertexDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = (ulong)(Unsafe.SizeOf<Vertex>() * vertices.Length),
             Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
             MipLevels = 1,
             SampleDesc = new() { Count = 1 },
@@ -815,11 +814,11 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+                Type = D3D12_HEAP_TYPE_UPLOAD,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             vertexDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out _vertexResource);
 
@@ -849,11 +848,11 @@ internal sealed class DX12Engine {
         ];
 
         var indexResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = (ulong)(sizeof(uint) * indexArray.Length),
             Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
             MipLevels = 1,
             SampleDesc = new() { Count = 1 },
@@ -861,11 +860,11 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+                Type = D3D12_HEAP_TYPE_UPLOAD,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             indexResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out _indexResource);
 
@@ -876,7 +875,7 @@ internal sealed class DX12Engine {
 
         _indexBufferView.BufferLocation = _indexResource.GetGPUVirtualAddress();
         _indexBufferView.SizeInBytes = (uint)(sizeof(uint) * indexArray.Length);
-        _indexBufferView.Format = DXGI_FORMAT.DXGI_FORMAT_R32_UINT;
+        _indexBufferView.Format = DXGI_FORMAT_R32_UINT;
     }
 
     private unsafe void UpdateConstantBuffer() {
@@ -917,7 +916,7 @@ internal sealed class DX12Engine {
 
         _commandList.SetGraphicsRootConstantBufferView(1, _cbvResource.GetGPUVirtualAddress());
 
-        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         _commandList.IASetVertexBuffers(0, [_vertexBufferView]);
 

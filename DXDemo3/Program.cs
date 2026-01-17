@@ -7,9 +7,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Direct3D;
 using Windows.Win32.Graphics.Direct3D12;
 using Windows.Win32.Graphics.Dxgi;
-using Windows.Win32.Graphics.Dxgi.Common;
 using Windows.Win32.UI.WindowsAndMessaging;
-using static Windows.Win32.PInvoke;
 
 namespace DXDemo3;
 
@@ -35,11 +33,11 @@ internal sealed unsafe class DX12Engine {
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
     private static readonly D3D_FEATURE_LEVEL[] DX12SupportLevels = [
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_1,        // 12.1
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_0,        // 12
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_1,        // 11.1
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0         // 11
+        D3D_FEATURE_LEVEL_12_2,        // 12.2
+        D3D_FEATURE_LEVEL_12_1,        // 12.1
+        D3D_FEATURE_LEVEL_12_0,        // 12
+        D3D_FEATURE_LEVEL_11_1,        // 11.1
+        D3D_FEATURE_LEVEL_11_0         // 11
     ];
 
     private const int WindowWidth = 640;
@@ -139,7 +137,7 @@ internal sealed unsafe class DX12Engine {
         D3D12GetDebugInterface(out _d3d12DebugDevice).ThrowOnFailure();
         _d3d12DebugDevice.EnableDebugLayer();
 
-        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
+        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
     }
 
     private bool CreateDevice() {
@@ -159,7 +157,7 @@ internal sealed unsafe class DX12Engine {
     }
 
     private void CreateCommandComponents() {
-        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE.D3D12_COMMAND_LIST_TYPE_DIRECT;
+        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
         var queueDesc = new D3D12_COMMAND_QUEUE_DESC() {
             Type = type,
@@ -180,7 +178,7 @@ internal sealed unsafe class DX12Engine {
     }
 
     private void CreateRenderTarget() {
-        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
         var rtvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = FrameCount,
@@ -192,9 +190,9 @@ internal sealed unsafe class DX12Engine {
             BufferCount = FrameCount,
             Width = WindowWidth,
             Height = WindowHeight,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM,
-            SwapEffect = DXGI_SWAP_EFFECT.DXGI_SWAP_EFFECT_FLIP_DISCARD,
-            BufferUsage = DXGI_USAGE.DXGI_USAGE_RENDER_TARGET_OUTPUT,
+            Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+            BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
             SampleDesc = new() {
                 Count = 1,
             },
@@ -228,18 +226,18 @@ internal sealed unsafe class DX12Engine {
     private void CreateFenceAndBarrier() {
         _renderEvent = CreateEvent(null, false, true, null);
 
-        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, out _fence);
+        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
         // 设置资源屏障
         // _beginBarrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
-        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
-        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         // _endBarrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
-        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
-        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
+        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     private void CreateRootSignature() {
@@ -249,12 +247,12 @@ internal sealed unsafe class DX12Engine {
             NumStaticSamplers = 0,
             pStaticSamplers = null,
             // 根签名标志，可以设置渲染管线不同阶段下的输入参数状态。注意这里！我们要从 IA 阶段输入顶点数据，所以要通过根签名，设置渲染管线允许从 IA 阶段读入数据
-            Flags = D3D12_ROOT_SIGNATURE_FLAGS.D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+            Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
         };
 
         D3D12SerializeRootSignature(
             &rootSignatureDesc,
-            D3D_ROOT_SIGNATURE_VERSION.D3D_ROOT_SIGNATURE_VERSION_1_0,
+            D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
             out var errorBlob).ThrowOnFailure();
 
@@ -285,11 +283,11 @@ internal sealed unsafe class DX12Engine {
         inputElementDesc[0] = new() {
             SemanticName = new(pSemanticNamePosition),
             SemanticIndex = 0,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
+            Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
             InputSlot = 0,
             AlignedByteOffset = 0,
             // 输入流类型，一种是我们现在用的 D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA 逐顶点输入流,还有一种叫逐实例输入流，后面再学
-            InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
 
@@ -301,12 +299,12 @@ internal sealed unsafe class DX12Engine {
         inputElementDesc[1] = new() {
             SemanticName = new(pSemanticNameColor),
             SemanticIndex = 0,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
+            Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
             InputSlot = 0,
             // 在输入槽中的偏移，因为 position 与 color 在同一输入槽(0号输入槽)
             // position 是 float4，有 4 个 float ，每个 float 占 4 个字节，所以要偏移 4*4=16 个字节，这样才能确定 color 参数的位置，不然装配的时候会覆盖原先 position 的数据
             AlignedByteOffset = 16,
-            InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
 
@@ -364,15 +362,15 @@ internal sealed unsafe class DX12Engine {
             BytecodeLength = pixelShaderBlob.GetBufferSize(),
         };
 
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_BACK;
-        psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE.D3D12_FILL_MODE_SOLID;
+        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+        psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 
         psoDesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
 
-        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE.D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats._0 = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE.D3D12_COLOR_WRITE_ENABLE_ALL;
+        psoDesc.RTVFormats._0 = DXGI_FORMAT_R8G8B8A8_UNORM;
+        psoDesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE_ALL;
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleMask = uint.MaxValue;
 
@@ -390,11 +388,11 @@ internal sealed unsafe class DX12Engine {
         ];
 
         var vertexDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = (ulong)(sizeof(Vertex) * vertices.Length),
             Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
             MipLevels = 1,
             SampleDesc = new() { Count = 1 },
@@ -402,11 +400,11 @@ internal sealed unsafe class DX12Engine {
 
         _d3d12Device.CreateCommittedResource(
             new D3D12_HEAP_PROPERTIES() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+                Type = D3D12_HEAP_TYPE_UPLOAD,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             vertexDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out _vertexResource);
 
@@ -440,7 +438,7 @@ internal sealed unsafe class DX12Engine {
 
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue, 0, null);
 
-        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         _commandList.IASetVertexBuffers(0, [_vertexBufferView]);
 

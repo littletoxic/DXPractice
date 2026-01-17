@@ -1,4 +1,4 @@
-﻿// (9) AssimpAcquaintance: 初步认识并使用 Assimp 库，获取并打印《蔚蓝档案》中的 霞沢美游 gltf 模型的数据
+﻿// (9) AssimpAcquntance: 初步认识并使用 Assimp 库，获取并打印《蔚蓝档案》中的 霞沢美游 gltf 模型的数据
 // 鸣谢原作者大大: Onerui(momo) (https://sketchfab.com/hswangrui)
 // 模型项目地址: https://sketchfab.com/3d-models/blue-archivekasumizawa-miyu-108d81dfd5a44dab92e4dccf0cc51a02
 
@@ -9,6 +9,7 @@
 // scene.bin          储存模型图元，顶点，骨骼动画等二进制数据
 // scene.gltf         JSON 文件，定义 scene 的结构与元素，并储存 bin 和 textures 的链接
 
+using System.Runtime.CompilerServices;
 using Assimp;
 using static Assimp.PInvoke;
 
@@ -21,21 +22,21 @@ internal sealed class Program {
     // 递归展开计算模型骨骼节点，打印每个骨骼节点的名称，大部分情况下节点都是骨骼，节点名和骨骼名相同
     // 骨骼在模型中的呈现形式是骨骼树，在骨骼动画中，父节点会影响子节点，子节点拿到的偏移矩阵是相对于所属父节点的，所以要递归展开计算
     // Assimp 中，节点的变换矩阵会影响节点下的全部属性，包括网格、骨骼、子节点，骨骼名是唯一的
-    private static unsafe void ModelNodeTraversal(aiNode* node, string nodeBaseStr, uint tier) {
-        Console.WriteLine($"{nodeBaseStr}┗━━ 节点名: {node->mName} (层级: {tier}, 子节点数: {node->mNumChildren})");
+    private static unsafe void ModelNodeTraversal(ref Node node, string nodeBaseStr, uint tier) {
+        Console.WriteLine($"{nodeBaseStr}┗━━ 节点名: {node.mName} (层级: {tier}, 子节点数: {node.mNumChildren})");
 
         // 当前节点打印完成，下一行打印子节点时，在前面添加空格，便于区分
         nodeBaseStr += "  ";
 
         // 遍历子节点，打印子节点的名称
-        for (uint i = 0; i < node->mNumChildren; i++) {
-            ModelNodeTraversal(node->mChildren[i], nodeBaseStr, tier + 1);
+        for (uint i = 0; i < node.mNumChildren; i++) {
+            ModelNodeTraversal(ref *node.mChildren[i], nodeBaseStr, tier + 1);
         }
 
         _totalNodeNum++;  // 总节点数 +1
     }
 
-    private static unsafe void Main() {
+    private unsafe static void Main() {
 
         var modelFileName = "miyu/scene.gltf";  // 模型文件名
 
@@ -47,16 +48,16 @@ internal sealed class Program {
         // GenBoundingBoxes: 对每个网格，都生成一个 AABB 体积盒
         // JoinIdenticalVertices: 将位置相同的顶点合并为一个顶点，从而减少模型的顶点数量，优化内存使用和提升渲染效率
         var modelImportFlag =
-            (long)(aiPostProcessSteps.aiProcess_MakeLeftHanded | aiPostProcessSteps.aiProcess_FlipUVs | aiPostProcessSteps.aiProcess_FlipWindingOrder |
-            aiPostProcessSteps.aiProcess_Triangulate | aiPostProcessSteps.aiProcess_FixInfacingNormals | aiPostProcessSteps.aiProcess_LimitBoneWeights |
-            aiPostProcessSteps.aiProcess_JoinIdenticalVertices | aiPostProcessSteps.aiProcess_GenBoundingBoxes);
+            (uint)(PostProcessSteps.MakeLeftHanded | PostProcessSteps.FlipUVs | PostProcessSteps.FlipWindingOrder |
+            PostProcessSteps.Triangulate | PostProcessSteps.FixInfacingNormals | PostProcessSteps.LimitBoneWeights |
+            PostProcessSteps.JoinIdenticalVertices | PostProcessSteps.GenBoundingBoxes);
 
         // 读取模型数据，数据会存储在 Scene 对象
 
-        var modelScene = ImportFile(modelFileName, (uint)modelImportFlag);
+        ref var modelScene = ref *ImportFile(modelFileName, modelImportFlag);
 
         // 如果模型没有成功载入 (无法载入，载入未完成，载入后无根节点)
-        if (modelScene == null || (modelScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || modelScene->mRootNode == null) {
+        if (Unsafe.IsNullRef(ref modelScene) || (modelScene.mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || modelScene.mRootNode == null) {
             var errorMsg = GetErrorString();
             Console.WriteLine($"载入文件 {modelFileName} 失败！错误原因：{errorMsg}");
             return;
@@ -72,7 +73,7 @@ internal sealed class Program {
         string nodeBaseStr = "";
 
         // 从根节点开始递归打印
-        ModelNodeTraversal(modelScene->mRootNode, nodeBaseStr, 1);
+        ModelNodeTraversal(ref *modelScene.mRootNode, nodeBaseStr, 1);
 
         Console.WriteLine($"\n总节点数: {_totalNodeNum}\n");
         Console.WriteLine("------------------------------------------------------------------------\n");
@@ -86,13 +87,12 @@ internal sealed class Program {
         var materialGroup = new List<string>();
 
         // 遍历模型中的所有材质
-        for (uint i = 0; i < modelScene->mNumMaterials; i++) {
+        for (uint i = 0; i < modelScene.mNumMaterials; i++) {
             // Assimp 解析出来的模型材质
-            var material = modelScene->mMaterials[i];
+            ref var material = ref *modelScene.mMaterials[i];
 
             // 获取材质名
-            var materialName = new aiString();
-            GetMaterialString(*material, "?mat.name", 0, 0, ref materialName);
+            GetMaterialString(material, _AI_MATKEY_NAME_BASE, 0, 0, out var materialName);
 
             Console.WriteLine($"材质名: {materialName}");
             materialGroup.Add(materialName.ToString());
@@ -100,35 +100,33 @@ internal sealed class Program {
             // 纹理是材质的子集，一个材质可能有很多组不同类型的纹理
             // 获取材质中的纹理数，目前我们只会用到 EMISSIVE, DIFFUSE, NORMAL 这三种纹理，后面我们会逐一介绍这些纹理的功能与区别
             // 在 Assimp 中，有一些类型 (例如 DIFFUSE 和 BASE_COLOR) 其实指的是同一个纹理，不过会有一些功能上的区别
-            var emissiveCount = GetMaterialTextureCount(material, aiTextureType.aiTextureType_EMISSIVE);
-            var diffuseCount = GetMaterialTextureCount(material, aiTextureType.aiTextureType_EMISSIVE);
-            var normalCount = GetMaterialTextureCount(material, aiTextureType.aiTextureType_EMISSIVE);
+            var emissiveCount = GetMaterialTextureCount(material, TextureType.EMISSIVE);
+            var diffuseCount = GetMaterialTextureCount(material, TextureType.EMISSIVE);
+            var normalCount = GetMaterialTextureCount(material, TextureType.EMISSIVE);
 
             Console.WriteLine($"EMISSIVE 自发光纹理数: {emissiveCount}");
             Console.WriteLine($"DIFFUSE 漫反射纹理数: {diffuseCount}");
             Console.WriteLine($"NORMAL 法线纹理数: {normalCount}");
 
-            // 材质对应的纹理文件名
-            var materialPath = new aiString();
 
             // 获取材质对应的纹理，有时候一个材质甚至会有多个名字相同，但是类型不同的纹理贴图
             // Assimp 为了区分这些纹理，特意设置了一个叫 Channel 通道的东西，如果名字相同，不同类型的纹理贴图会占据不同通道
             // GetTexture 的第二个参数就是通道索引，大部分材质同类型下最多只有一个纹理，所以第二个参数直接指定 0 就行
             // 注意 GetTexture 的返回值表示状态，Return.Success 才算获取成功
-            if (GetMaterialTexture(material, aiTextureType.aiTextureType_EMISSIVE, 0, &materialPath, null, null, null, null, null, null) == aiReturn.aiReturn_SUCCESS) {
+            if (GetMaterialTexture(material, TextureType.EMISSIVE, 0, out var materialPath) == ReturnCode.SUCCESS) {
                 Console.WriteLine($"EMISSIVE 自发光纹理文件名: {materialPath}");
             }
-            if (GetMaterialTexture(material, aiTextureType.aiTextureType_DIFFUSE, 0, &materialPath, null, null, null, null, null, null) == aiReturn.aiReturn_SUCCESS) {
+            if (GetMaterialTexture(material, TextureType.DIFFUSE, 0, out materialPath) == ReturnCode.SUCCESS) {
                 Console.WriteLine($"DIFFUSE 漫反射纹理文件名: {materialPath}");
             }
-            if (GetMaterialTexture(material, aiTextureType.aiTextureType_NORMALS, 0, &materialPath, null, null, null, null, null, null) == aiReturn.aiReturn_SUCCESS) {
+            if (GetMaterialTexture(material, TextureType.NORMALS, 0, out materialPath) == ReturnCode.SUCCESS) {
                 Console.WriteLine($"NORMAL 法线纹理文件名: {materialPath}");
             }
 
             Console.WriteLine();
         }
 
-        Console.WriteLine($"\n总材质数: {modelScene->mNumMaterials}\n");
+        Console.WriteLine($"\n总材质数: {modelScene.mNumMaterials}\n");
         Console.WriteLine("------------------------------------------------------------------------\n");
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -137,24 +135,24 @@ internal sealed class Program {
 
         // Mesh 网格相当于模型的皮肤，它存储了模型要渲染的顶点信息。在骨骼模型中，Mesh 需要依赖骨骼节点才能正确渲染
         // 遍历模型的所有 Mesh 网格
-        for (uint i = 0; i < modelScene->mNumMeshes; i++) {
+        for (uint i = 0; i < modelScene.mNumMeshes; i++) {
             // 当前网格
-            var mesh = modelScene->mMeshes[i];
+            ref var mesh = ref *modelScene.mMeshes[i];
 
-            Console.WriteLine($"网格名: {mesh->mName}");
-            Console.WriteLine($"顶点数: {mesh->mNumVertices}");
-            Console.WriteLine($"索引数: {mesh->mNumFaces * 3}");
-            Console.WriteLine($"所用材质索引: {mesh->mMaterialIndex} (对应材质: {materialGroup[(int)mesh->mMaterialIndex]})");
+            Console.WriteLine($"网格名: {mesh.mName}");
+            Console.WriteLine($"顶点数: {mesh.mNumVertices}");
+            Console.WriteLine($"索引数: {mesh.mNumFaces * 3}");
+            Console.WriteLine($"所用材质索引: {mesh.mMaterialIndex} (对应材质: {materialGroup[(int)mesh.mMaterialIndex]})");
 
             // 如果 Mesh 有被骨骼影响到，就输出相关骨骼。对骨骼模型而言非常重要
             // 一个网格可以被多个骨骼影响到，这是因为网格依赖骨骼，附着在骨骼上，通常是整块整块附着
             // 关节是骨骼之间的连接点，这些网格很多都会覆盖关节 (或占据关节部分位置)，网格上的顶点受不同骨骼的影响程度各不相同
-            if (mesh->mNumBones > 0) {
+            if (mesh.mNumBones > 0) {
                 Console.WriteLine("受影响的骨骼:");
 
                 // 遍历骨骼
-                for (uint j = 0; j < mesh->mNumBones; j++) {
-                    Console.WriteLine(mesh->mBones[j]->mName);
+                for (uint j = 0; j < mesh.mNumBones; j++) {
+                    Console.WriteLine(mesh.mBones[j]->mName);
                 }
             } else {  // 没有绑定骨骼，网格上的顶点坐标就表示相对于整个模型的绝对位置，即使是骨骼模型，也会有网格没被骨骼影响到
                 Console.WriteLine("没有骨骼影响！");
@@ -163,7 +161,7 @@ internal sealed class Program {
             Console.WriteLine();
         }
 
-        Console.WriteLine($"总网格数: {modelScene->mNumMeshes}\n");
+        Console.WriteLine($"总网格数: {modelScene.mNumMeshes}\n");
 
         // ---------------------------------------------------------------------------------------------------------------
 
@@ -174,26 +172,27 @@ internal sealed class Program {
         float maxBoundsX, maxBoundsY, maxBoundsZ;  // 最大坐标点
 
         // 设置初始值，模型 AABB 包围盒，用于调整摄像机视野，防止模型在摄像机视野外飞出去
-        minBoundsX = modelScene->mMeshes[0]->mAABB.mMin.x;
-        minBoundsY = modelScene->mMeshes[0]->mAABB.mMin.y;
-        minBoundsZ = modelScene->mMeshes[0]->mAABB.mMin.z;
-        maxBoundsX = modelScene->mMeshes[0]->mAABB.mMax.x;
-        maxBoundsY = modelScene->mMeshes[0]->mAABB.mMax.y;
-        maxBoundsZ = modelScene->mMeshes[0]->mAABB.mMax.z;
+        ref var initialMesh = ref *modelScene.mMeshes[0];
+        minBoundsX = initialMesh.mAABB.mMin.x;
+        minBoundsY = initialMesh.mAABB.mMin.y;
+        minBoundsZ = initialMesh.mAABB.mMin.z;
+        maxBoundsX = initialMesh.mAABB.mMax.x;
+        maxBoundsY = initialMesh.mAABB.mMax.y;
+        maxBoundsZ = initialMesh.mAABB.mMax.z;
 
-        // 逐网格遍历，计算整个模型的 AABB 包围盒，请注意导入模型时要指定 aiProcess_GenBoundingBoxes，否则 MAABB 成员会没有数据
-        for (uint i = 1; i < modelScene->mNumMeshes; i++) {
+        // 逐网格遍历，计算整个模型的 AABB 包围盒，请注意导入模型时要指定 GenBoundingBoxes，否则 MAABB 成员会没有数据
+        for (uint i = 1; i < modelScene.mNumMeshes; i++) {
             // 当前网格
-            var mesh = modelScene->mMeshes[i];
+            ref var mesh = ref *modelScene.mMeshes[i];
 
             // 更新总包围盒
-            minBoundsX = Math.Min(mesh->mAABB.mMin.x, minBoundsX);
-            minBoundsY = Math.Min(mesh->mAABB.mMin.y, minBoundsY);
-            minBoundsZ = Math.Min(mesh->mAABB.mMin.z, minBoundsZ);
+            minBoundsX = Math.Min(mesh.mAABB.mMin.x, minBoundsX);
+            minBoundsY = Math.Min(mesh.mAABB.mMin.y, minBoundsY);
+            minBoundsZ = Math.Min(mesh.mAABB.mMin.z, minBoundsZ);
 
-            maxBoundsX = Math.Max(mesh->mAABB.mMax.x, maxBoundsX);
-            maxBoundsY = Math.Max(mesh->mAABB.mMax.y, maxBoundsY);
-            maxBoundsZ = Math.Max(mesh->mAABB.mMax.z, maxBoundsZ);
+            maxBoundsX = Math.Max(mesh.mAABB.mMax.x, maxBoundsX);
+            maxBoundsY = Math.Max(mesh.mAABB.mMax.y, maxBoundsY);
+            maxBoundsZ = Math.Max(mesh.mAABB.mMax.z, maxBoundsZ);
         }
 
         Console.WriteLine($"模型包围盒: min({minBoundsX},{minBoundsY},{minBoundsZ}) max({maxBoundsX},{maxBoundsY},{maxBoundsZ})");

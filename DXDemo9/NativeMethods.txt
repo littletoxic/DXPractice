@@ -6,8 +6,8 @@ GetMaterialTextureCount
 GetMaterialString
 GetErrorString
 
-aiNode
-aiPostProcessSteps
-aiComponent
+Assimp.Node
+PostProcessSteps
+Assimp.Component
 
 AI_SCENE_FLAGS_INCOMPLETE

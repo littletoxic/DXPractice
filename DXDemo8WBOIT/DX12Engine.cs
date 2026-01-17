@@ -13,7 +13,6 @@ using Windows.Win32.Graphics.Imaging;
 using Windows.Win32.System.Com;
 using Windows.Win32.System.SystemServices;
 using Windows.Win32.UI.WindowsAndMessaging;
-using static Windows.Win32.PInvoke;
 
 namespace DXDemo8WBOIT;
 
@@ -25,11 +24,11 @@ internal sealed class DX12Engine {
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
     private static readonly D3D_FEATURE_LEVEL[] DX12SupportLevels = [
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_1,        // 12.1
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_0,        // 12
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_1,        // 11.1
-        D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0         // 11
+        D3D_FEATURE_LEVEL_12_2,        // 12.2
+        D3D_FEATURE_LEVEL_12_1,        // 12.1
+        D3D_FEATURE_LEVEL_12_0,        // 12
+        D3D_FEATURE_LEVEL_11_1,        // 11.1
+        D3D_FEATURE_LEVEL_11_0         // 11
     ];
 
     private const int WindowWidth = 640;
@@ -71,7 +70,7 @@ internal sealed class DX12Engine {
     // DXGI_FORMAT_D16_UNORM			(每个像素占用两个字节 16 位，16 位无符号归一化浮点数留作深度值，范围 [0,1]，不使用模板)
     // DXGI_FORMAT_D32_FLOAT			(每个像素占用四个字节 32 位，32 位浮点数留作深度值，不使用模板)
     // 这里我们选择最常用的格式 DXGI_FORMAT_D24_UNORM_S8_UINT
-    private readonly DXGI_FORMAT _dsvFormat = DXGI_FORMAT.DXGI_FORMAT_D24_UNORM_S8_UINT;
+    private readonly DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
 
     private ID3D12DescriptorHeap _srvHeap;
@@ -83,7 +82,7 @@ internal sealed class DX12Engine {
     private IWICBitmapFrameDecode _wicBitmapDecoderFrame;
     private IWICFormatConverter _wicFormatConverter;
     private IWICBitmapSource _wicBitmapSource;
-    private DXGI_FORMAT _textureFormat = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN;
+    private DXGI_FORMAT _textureFormat = DXGI_FORMAT_UNKNOWN;
     private uint _textureWidth;
     private uint _textureHeight;
     private uint _bitsPerPixel;
@@ -188,7 +187,7 @@ internal sealed class DX12Engine {
         D3D12GetDebugInterface(out _d3d12DebugDevice).ThrowOnFailure();
         _d3d12DebugDevice.EnableDebugLayer();
 
-        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
+        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
     }
 
     private bool CreateDevice() {
@@ -210,7 +209,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateCommandComponents() {
-        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE.D3D12_COMMAND_LIST_TYPE_DIRECT;
+        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
         var queueDesc = new D3D12_COMMAND_QUEUE_DESC() {
             Type = type,
@@ -231,7 +230,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateRenderTarget() {
-        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
         var rtvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = FrameCount,
@@ -243,9 +242,9 @@ internal sealed class DX12Engine {
             BufferCount = FrameCount,
             Width = WindowWidth,
             Height = WindowHeight,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM,
-            SwapEffect = DXGI_SWAP_EFFECT.DXGI_SWAP_EFFECT_FLIP_DISCARD,
-            BufferUsage = DXGI_USAGE.DXGI_USAGE_RENDER_TARGET_OUTPUT,
+            Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+            BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
             SampleDesc = new() {
                 Count = 1,
             },
@@ -279,24 +278,24 @@ internal sealed class DX12Engine {
     private void CreateFenceAndBarrier() {
         _renderEvent = CreateEvent(null, false, true, null);
 
-        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, out _fence);
+        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
         // 设置资源屏障
         // _beginBarrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
-        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
-        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         // _endBarrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
-        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
-        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
+        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     private void CreateDSVHeap() {
         var dsvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = 1,
-            Type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+            Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
         };
 
         _d3d12Device.CreateDescriptorHeap(dsvHeapDesc, out _dsvHeap);
@@ -306,15 +305,15 @@ internal sealed class DX12Engine {
 
     private void CreateDepthStencilBuffer() {
         var dsvResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
             Format = _dsvFormat,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_UNKNOWN,
+            Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
             Width = WindowWidth,
             Height = WindowHeight,
             MipLevels = 1,
             DepthOrArraySize = 1,
             SampleDesc = new() { Count = 1, Quality = 0 },
-            Flags = D3D12_RESOURCE_FLAGS.D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
+            Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
         };
 
         var depthStencilBufferClearValue = new D3D12_CLEAR_VALUE() {
@@ -329,11 +328,11 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource(
             new D3D12_HEAP_PROPERTIES() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_DEFAULT,
+                Type = D3D12_HEAP_TYPE_DEFAULT,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             dsvResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
             depthStencilBufferClearValue,
             out _depthStencilBuffer);
     }
@@ -341,8 +340,8 @@ internal sealed class DX12Engine {
     private void CreateDSV() {
         var dsvViewDesc = new D3D12_DEPTH_STENCIL_VIEW_DESC() {
             Format = _dsvFormat,
-            ViewDimension = D3D12_DSV_DIMENSION.D3D12_DSV_DIMENSION_TEXTURE2D,
-            Flags = D3D12_DSV_FLAGS.D3D12_DSV_FLAG_NONE,
+            ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
+            Flags = D3D12_DSV_FLAG_NONE,
         };
 
         _d3d12Device.CreateDepthStencilView(
@@ -354,8 +353,8 @@ internal sealed class DX12Engine {
     private void CreateSRVHeap() {
         var srvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = (uint)_modelManager.TextureSRVMap.Count,
-            Type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            Flags = D3D12_DESCRIPTOR_HEAP_FLAGS.D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
+            Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
         };
 
         _d3d12Device.CreateDescriptorHeap(srvHeapDesc, out _srvHeap);
@@ -367,57 +366,57 @@ internal sealed class DX12Engine {
         // 1. 创建 WBOIT 专用的 RTV 堆 (2 个描述符: 累积 + 透明度)
         var wboitRtvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = 2,
-            Type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+            Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
         };
         _d3d12Device.CreateDescriptorHeap(wboitRtvHeapDesc, out _wboitRTVHeap);
 
         var rtvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(
-            D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
         // 2. 创建累积目标资源 (RGBA16F)
         var accumResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
             Width = WindowWidth,
             Height = WindowHeight,
             DepthOrArraySize = 1,
             MipLevels = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
+            Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
             SampleDesc = new DXGI_SAMPLE_DESC { Count = 1 },
-            Flags = D3D12_RESOURCE_FLAGS.D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
+            Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
         };
 
         var accumClearValue = new D3D12_CLEAR_VALUE() {
-            Format = DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
+            Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
             Anonymous = new D3D12_CLEAR_VALUE._Anonymous_e__Union() {
                 Color = WBOITAccumClear  // 清除颜色为 (0, 0, 0, 0)
             }
         };
 
         _d3d12Device.CreateCommittedResource(
-            new D3D12_HEAP_PROPERTIES() { Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_DEFAULT },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            new D3D12_HEAP_PROPERTIES() { Type = D3D12_HEAP_TYPE_DEFAULT },
+            D3D12_HEAP_FLAG_NONE,
             accumResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
             accumClearValue,
             out ID3D12Resource accumResource);
         _wboitAccumTarget = new(accumResource);
 
         // 3. 创建透明度目标资源 (R16F)
         var revealResourceDesc = accumResourceDesc;
-        revealResourceDesc.Format = DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT;
+        revealResourceDesc.Format = DXGI_FORMAT_R16_FLOAT;
 
         var revealClearValue = new D3D12_CLEAR_VALUE() {
-            Format = DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT,
+            Format = DXGI_FORMAT_R16_FLOAT,
             Anonymous = new D3D12_CLEAR_VALUE._Anonymous_e__Union() {
                 Color = WBOITRevealClear  // reveal 初始值为 1
             }
         };
 
         _d3d12Device.CreateCommittedResource(
-            new D3D12_HEAP_PROPERTIES() { Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_DEFAULT },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            new D3D12_HEAP_PROPERTIES() { Type = D3D12_HEAP_TYPE_DEFAULT },
+            D3D12_HEAP_FLAG_NONE,
             revealResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
             revealClearValue,
             out ID3D12Resource revealResource);
         _wboitRevealTarget = new(revealResource);
@@ -433,19 +432,19 @@ internal sealed class DX12Engine {
         // 5. 创建 WBOIT SRV 堆 (2 个描述符，用于合成 Pass 读取)
         var wboitSrvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = 2,
-            Type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            Flags = D3D12_DESCRIPTOR_HEAP_FLAGS.D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
+            Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
         };
         _d3d12Device.CreateDescriptorHeap(wboitSrvHeapDesc, out _wboitSRVHeap);
 
         var srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(
-            D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
         // 6. 创建 SRV
         var accumSrvHandle = _wboitSRVHeap.GetCPUDescriptorHandleForHeapStart();
         var accumSrvDesc = new D3D12_SHADER_RESOURCE_VIEW_DESC() {
-            Format = DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
-            ViewDimension = D3D12_SRV_DIMENSION.D3D12_SRV_DIMENSION_TEXTURE2D,
+            Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+            ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
             Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             Anonymous = new D3D12_SHADER_RESOURCE_VIEW_DESC._Anonymous_e__Union() {
                 Texture2D = new D3D12_TEX2D_SRV() {
@@ -459,20 +458,20 @@ internal sealed class DX12Engine {
         var revealSrvHandle = accumSrvHandle;
         revealSrvHandle.ptr += srvDescriptorSize;
         var revealSrvDesc = accumSrvDesc;
-        revealSrvDesc.Format = DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT;
+        revealSrvDesc.Format = DXGI_FORMAT_R16_FLOAT;
         _d3d12Device.CreateShaderResourceView(_wboitRevealTarget.Managed, revealSrvDesc, revealSrvHandle);
 
         // 保存 GPU 句柄供渲染时使用
         _wboitSrvGpuHandle = _wboitSRVHeap.GetGPUDescriptorHandleForHeapStart();
 
         // 初始化 WBOIT 资源屏障 (复用模板，渲染时设置 pResource)
-        _wboitBarrierToSRV.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _wboitBarrierToSRV.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
-        _wboitBarrierToSRV.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        _wboitBarrierToSRV.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _wboitBarrierToSRV.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _wboitBarrierToSRV.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-        _wboitBarrierToRTV.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _wboitBarrierToRTV.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        _wboitBarrierToRTV.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _wboitBarrierToRTV.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _wboitBarrierToRTV.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        _wboitBarrierToRTV.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
     }
 
     private void StartCommandRecord() {
@@ -550,11 +549,11 @@ internal sealed class DX12Engine {
 
 
         var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = _uploadResourceSize,
             Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
             MipLevels = 1,
             SampleDesc = new() { Count = 1 },
@@ -562,19 +561,19 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource<ID3D12Resource>(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+                Type = D3D12_HEAP_TYPE_UPLOAD,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             uploadResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out var uploadTextureResource);
         info.UploadHeapTextureResource = new(uploadTextureResource);
 
 
         var defaultResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_UNKNOWN,
+            Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
             Width = _textureWidth,
             Height = _textureHeight,
             Format = _textureFormat,
@@ -585,11 +584,11 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource<ID3D12Resource>(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_DEFAULT,
+                Type = D3D12_HEAP_TYPE_DEFAULT,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             defaultResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_COPY_DEST,
+            D3D12_RESOURCE_STATE_COPY_DEST,
             null,
             out var defaultTextureResource);
         info.DefaultHeapTextureResource = new(defaultTextureResource);
@@ -625,13 +624,13 @@ internal sealed class DX12Engine {
             new(ref placedFootprint));
 
         var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
-            Type = D3D12_TEXTURE_COPY_TYPE.D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             Anonymous = new() { SubresourceIndex = 0 },
             pResource = (ID3D12Resource_unmanaged*)info.DefaultHeapTextureResource.Ptr,
         };
 
         var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
-            Type = D3D12_TEXTURE_COPY_TYPE.D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
             Anonymous = new() { PlacedFootprint = placedFootprint },
             pResource = (ID3D12Resource_unmanaged*)info.UploadHeapTextureResource.Ptr,
         };
@@ -645,7 +644,7 @@ internal sealed class DX12Engine {
         D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) {
 
         var srvDescriptorDesc = new D3D12_SHADER_RESOURCE_VIEW_DESC() {
-            ViewDimension = D3D12_SRV_DIMENSION.D3D12_SRV_DIMENSION_TEXTURE2D,
+            ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
             Format = _textureFormat,
             Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             Anonymous = new() { Texture2D = new() { MipLevels = 1 } },
@@ -674,7 +673,7 @@ internal sealed class DX12Engine {
 
         var currentCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
         var currentGPUHandle = _srvHeap.GetGPUDescriptorHandleForHeapStart();
-        var srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        var srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
         StartCommandRecord();
 
@@ -700,11 +699,11 @@ internal sealed class DX12Engine {
         uint cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
-            Dimension = D3D12_RESOURCE_DIMENSION.D3D12_RESOURCE_DIMENSION_BUFFER,
-            Layout = D3D12_TEXTURE_LAYOUT.D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Width = cBufferSize,
             Height = 1,
-            Format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
+            Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
             MipLevels = 1,
             SampleDesc = new() { Count = 1 },
@@ -712,11 +711,11 @@ internal sealed class DX12Engine {
 
         _d3d12Device.CreateCommittedResource(
             new() {
-                Type = D3D12_HEAP_TYPE.D3D12_HEAP_TYPE_UPLOAD,
+                Type = D3D12_HEAP_TYPE_UPLOAD,
             },
-            D3D12_HEAP_FLAGS.D3D12_HEAP_FLAG_NONE,
+            D3D12_HEAP_FLAG_NONE,
             cbvResourceDesc,
-            D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_GENERIC_READ,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
             null,
             out _cbvResource);
 
@@ -736,14 +735,14 @@ internal sealed class DX12Engine {
         };
 
         rootParameters[0] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_ALL,
-            ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_CBV,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+            ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             Anonymous = new() { Descriptor = cbvRootDescriptorDesc },
         };
 
 
         var srvDescriptorDesc = new D3D12_DESCRIPTOR_RANGE() {
-            RangeType = D3D12_DESCRIPTOR_RANGE_TYPE.D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
             NumDescriptors = 1,
             BaseShaderRegister = 0,
             RegisterSpace = 0,
@@ -756,8 +755,8 @@ internal sealed class DX12Engine {
         };
 
         rootParameters[1] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_PIXEL,
-            ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+            ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             Anonymous = new() { DescriptorTable = rootDescriptorTableDesc },
         };
 
@@ -765,16 +764,16 @@ internal sealed class DX12Engine {
         var staticSamplerDesc = new D3D12_STATIC_SAMPLER_DESC() {
             ShaderRegister = 0,
             RegisterSpace = 0,
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_PIXEL,
-            Filter = D3D12_FILTER.D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
-            AddressU = D3D12_TEXTURE_ADDRESS_MODE.D3D12_TEXTURE_ADDRESS_MODE_BORDER,
-            AddressV = D3D12_TEXTURE_ADDRESS_MODE.D3D12_TEXTURE_ADDRESS_MODE_BORDER,
-            AddressW = D3D12_TEXTURE_ADDRESS_MODE.D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+            Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+            AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+            AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+            AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             MinLOD = 0.0f,
             MaxLOD = D3D12_FLOAT32_MAX,
             MipLODBias = 0,
             MaxAnisotropy = 1,
-            ComparisonFunc = D3D12_COMPARISON_FUNC.D3D12_COMPARISON_FUNC_NEVER,
+            ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
         };
 
 
@@ -784,12 +783,12 @@ internal sealed class DX12Engine {
             NumStaticSamplers = 1,
             pStaticSamplers = &staticSamplerDesc,
             // 根签名标志，可以设置渲染管线不同阶段下的输入参数状态。注意这里！我们要从 IA 阶段输入顶点数据，所以要通过根签名，设置渲染管线允许从 IA 阶段读入数据
-            Flags = D3D12_ROOT_SIGNATURE_FLAGS.D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+            Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
         };
 
         D3D12SerializeRootSignature(
             rootSignatureDesc,
-            D3D_ROOT_SIGNATURE_VERSION.D3D_ROOT_SIGNATURE_VERSION_1_0,
+            D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
             out var errorBlob).ThrowOnFailure();
 
@@ -811,7 +810,7 @@ internal sealed class DX12Engine {
 
         // 描述符表包含 2 个 SRV (累积纹理 t0 + 透明度纹理 t1)
         var srvDescriptorRange = new D3D12_DESCRIPTOR_RANGE() {
-            RangeType = D3D12_DESCRIPTOR_RANGE_TYPE.D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
             NumDescriptors = 2,
             BaseShaderRegister = 0,
             RegisterSpace = 0,
@@ -824,8 +823,8 @@ internal sealed class DX12Engine {
         };
 
         rootParameters[0] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY.D3D12_SHADER_VISIBILITY_PIXEL,
-            ParameterType = D3D12_ROOT_PARAMETER_TYPE.D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+            ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             Anonymous = new() { DescriptorTable = rootDescriptorTableDesc },
         };
 
@@ -836,12 +835,12 @@ internal sealed class DX12Engine {
             NumStaticSamplers = 0,
             pStaticSamplers = null,
             // 合成 Pass 使用 SV_VertexID 生成顶点，不需要 IA 输入
-            Flags = D3D12_ROOT_SIGNATURE_FLAGS.D3D12_ROOT_SIGNATURE_FLAG_NONE
+            Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE
         };
 
         D3D12SerializeRootSignature(
             rootSignatureDesc,
-            D3D_ROOT_SIGNATURE_VERSION.D3D_ROOT_SIGNATURE_VERSION_1_0,
+            D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
             out var errorBlob).ThrowOnFailure();
 
@@ -863,23 +862,23 @@ internal sealed class DX12Engine {
         _inputElementDesc[0] = new() {
             SemanticName = Position,
             SemanticIndex = 0,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
+            Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
             InputSlot = 0,
             AlignedByteOffset = 0,
             // 输入流类型，一种是我们现在用的 D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA 逐顶点输入流,还有一种叫逐实例输入流，后面再学
-            InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
 
         _inputElementDesc[1] = new() {
             SemanticName = TexCoord,
             SemanticIndex = 0,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R32G32_FLOAT,
+            Format = DXGI_FORMAT_R32G32_FLOAT,
             InputSlot = 0,
             // 在输入槽中的偏移，因为 position 与 color 在同一输入槽(0号输入槽)
             // position 是 float4，有 4 个 float ，每个 float 占 4 个字节，所以要偏移 4*4=16 个字节，这样才能确定 color 参数的位置，不然装配的时候会覆盖原先 position 的数据
             AlignedByteOffset = 16,
-            InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
 
@@ -887,10 +886,10 @@ internal sealed class DX12Engine {
             _inputElementDesc[2 + i] = new() {
                 SemanticName = Matrix,
                 SemanticIndex = i,
-                Format = DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
+                Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
                 InputSlot = 1,
                 AlignedByteOffset = (uint)(i * Unsafe.SizeOf<Vector4>()),
-                InputSlotClass = D3D12_INPUT_CLASSIFICATION.D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                 InstanceDataStepRate = 0,
             };
         }
@@ -944,20 +943,20 @@ internal sealed class DX12Engine {
         _opaquePSODesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
         _opaquePSODesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
-        _opaquePSODesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_BACK;
-        _opaquePSODesc.RasterizerState.FillMode = D3D12_FILL_MODE.D3D12_FILL_MODE_SOLID;
+        _opaquePSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+        _opaquePSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 
         _opaquePSODesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
 
         _opaquePSODesc.DSVFormat = _dsvFormat;
         _opaquePSODesc.DepthStencilState.DepthEnable = true;
-        _opaquePSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC.D3D12_COMPARISON_FUNC_LESS;
-        _opaquePSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK.D3D12_DEPTH_WRITE_MASK_ALL;
+        _opaquePSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        _opaquePSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 
-        _opaquePSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE.D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        _opaquePSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         _opaquePSODesc.NumRenderTargets = 1;
-        _opaquePSODesc.RTVFormats._0 = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM;
-        _opaquePSODesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE.D3D12_COLOR_WRITE_ENABLE_ALL;
+        _opaquePSODesc.RTVFormats._0 = DXGI_FORMAT_R8G8B8A8_UNORM;
+        _opaquePSODesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE_ALL;
         _opaquePSODesc.SampleDesc.Count = 1;
         _opaquePSODesc.SampleMask = uint.MaxValue;
 
@@ -1019,7 +1018,7 @@ internal sealed class DX12Engine {
         _transparentPSODesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
         // 关闭背面剔除
-        _transparentPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_NONE;
+        _transparentPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 
         fixed (D3D12_INPUT_ELEMENT_DESC* pInputElementDesc = _inputElementDesc) {
             _transparentPSODesc.InputLayout = new() { NumElements = (uint)_inputElementDesc.Length, pInputElementDescs = pInputElementDesc };
@@ -1079,10 +1078,10 @@ internal sealed class DX12Engine {
         _translucencePSODesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
         // 关闭背面剔除
-        _translucencePSODesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_NONE;
+        _translucencePSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 
         // 关闭深度写入，但仍然保留深度测试
-        _translucencePSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK.D3D12_DEPTH_WRITE_MASK_ZERO;
+        _translucencePSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 
         // 结果色彩 = 上层色彩 * 上层色彩 alpha + 下层色彩 * (1 - 上层色彩 alpha)，这套公式仅适用于下层是不透明物体的情况
         // Src = 源色彩 = 上层色彩，Dest = 目标色彩 = 下层色彩
@@ -1094,15 +1093,15 @@ internal sealed class DX12Engine {
 
         // 下面三个选项控制 RGB 通道的混合，Alpha 通道与 RGB 通道的混合是分开的，这一点请留意！
         // Result = Src * SrcA + Dest * (1 - SrcA)
-        _translucencePSODesc.BlendState.RenderTarget._0.SrcBlend = D3D12_BLEND.D3D12_BLEND_SRC_ALPHA;
-        _translucencePSODesc.BlendState.RenderTarget._0.DestBlend = D3D12_BLEND.D3D12_BLEND_INV_SRC_ALPHA;
-        _translucencePSODesc.BlendState.RenderTarget._0.BlendOp = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
+        _translucencePSODesc.BlendState.RenderTarget._0.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        _translucencePSODesc.BlendState.RenderTarget._0.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        _translucencePSODesc.BlendState.RenderTarget._0.BlendOp = D3D12_BLEND_OP_ADD;
 
         // 下面的三个选项控制 Alpha 通道的混合，Alpha 通道与 RGB 通道的混合是分开的，这一点请留意！
         // ResultA = SrcA * 1 + DstA * 0
-        _translucencePSODesc.BlendState.RenderTarget._0.SrcBlendAlpha = D3D12_BLEND.D3D12_BLEND_ONE;
-        _translucencePSODesc.BlendState.RenderTarget._0.DestBlendAlpha = D3D12_BLEND.D3D12_BLEND_ZERO;
-        _translucencePSODesc.BlendState.RenderTarget._0.BlendOpAlpha = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
+        _translucencePSODesc.BlendState.RenderTarget._0.SrcBlendAlpha = D3D12_BLEND_ONE;
+        _translucencePSODesc.BlendState.RenderTarget._0.DestBlendAlpha = D3D12_BLEND_ZERO;
+        _translucencePSODesc.BlendState.RenderTarget._0.BlendOpAlpha = D3D12_BLEND_OP_ADD;
 
         fixed (D3D12_INPUT_ELEMENT_DESC* pInputElementDesc = _inputElementDesc) {
             _translucencePSODesc.InputLayout = new() { NumElements = (uint)_inputElementDesc.Length, pInputElementDescs = pInputElementDesc };
@@ -1161,15 +1160,15 @@ internal sealed class DX12Engine {
         wboitAccumPSODesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
         // 关闭背面剔除
-        wboitAccumPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_NONE;
+        wboitAccumPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 
         // 深度测试开，深度写入关
-        wboitAccumPSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK.D3D12_DEPTH_WRITE_MASK_ZERO;
+        wboitAccumPSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 
         // MRT: 2 个渲染目标
         wboitAccumPSODesc.NumRenderTargets = 2;
-        wboitAccumPSODesc.RTVFormats._0 = DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT;  // 累积
-        wboitAccumPSODesc.RTVFormats._1 = DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT;           // Reveal
+        wboitAccumPSODesc.RTVFormats._0 = DXGI_FORMAT_R16G16B16A16_FLOAT;  // 累积
+        wboitAccumPSODesc.RTVFormats._1 = DXGI_FORMAT_R16_FLOAT;           // Reveal
 
         // 关键：启用独立混合，允许每个 RT 使用不同的混合状态
         wboitAccumPSODesc.BlendState.IndependentBlendEnable = true;
@@ -1177,23 +1176,23 @@ internal sealed class DX12Engine {
         // RT0 混合: 加法混合 (累积)
         // Result = Src * 1 + Dest * 1
         wboitAccumPSODesc.BlendState.RenderTarget._0.BlendEnable = true;
-        wboitAccumPSODesc.BlendState.RenderTarget._0.SrcBlend = D3D12_BLEND.D3D12_BLEND_ONE;
-        wboitAccumPSODesc.BlendState.RenderTarget._0.DestBlend = D3D12_BLEND.D3D12_BLEND_ONE;
-        wboitAccumPSODesc.BlendState.RenderTarget._0.BlendOp = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
-        wboitAccumPSODesc.BlendState.RenderTarget._0.SrcBlendAlpha = D3D12_BLEND.D3D12_BLEND_ONE;
-        wboitAccumPSODesc.BlendState.RenderTarget._0.DestBlendAlpha = D3D12_BLEND.D3D12_BLEND_ONE;
-        wboitAccumPSODesc.BlendState.RenderTarget._0.BlendOpAlpha = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
+        wboitAccumPSODesc.BlendState.RenderTarget._0.SrcBlend = D3D12_BLEND_ONE;
+        wboitAccumPSODesc.BlendState.RenderTarget._0.DestBlend = D3D12_BLEND_ONE;
+        wboitAccumPSODesc.BlendState.RenderTarget._0.BlendOp = D3D12_BLEND_OP_ADD;
+        wboitAccumPSODesc.BlendState.RenderTarget._0.SrcBlendAlpha = D3D12_BLEND_ONE;
+        wboitAccumPSODesc.BlendState.RenderTarget._0.DestBlendAlpha = D3D12_BLEND_ONE;
+        wboitAccumPSODesc.BlendState.RenderTarget._0.BlendOpAlpha = D3D12_BLEND_OP_ADD;
 
         // RT1 混合: 乘法混合 (reveal)
         // Result = Src * 0 + Dest * (1 - SrcAlpha) = Dest * (1 - alpha)
         wboitAccumPSODesc.BlendState.RenderTarget._1.BlendEnable = true;
-        wboitAccumPSODesc.BlendState.RenderTarget._1.SrcBlend = D3D12_BLEND.D3D12_BLEND_ZERO;
-        wboitAccumPSODesc.BlendState.RenderTarget._1.DestBlend = D3D12_BLEND.D3D12_BLEND_INV_SRC_COLOR;
-        wboitAccumPSODesc.BlendState.RenderTarget._1.BlendOp = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
-        wboitAccumPSODesc.BlendState.RenderTarget._1.SrcBlendAlpha = D3D12_BLEND.D3D12_BLEND_ZERO;
-        wboitAccumPSODesc.BlendState.RenderTarget._1.DestBlendAlpha = D3D12_BLEND.D3D12_BLEND_INV_SRC_ALPHA;
-        wboitAccumPSODesc.BlendState.RenderTarget._1.BlendOpAlpha = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD;
-        wboitAccumPSODesc.BlendState.RenderTarget._1.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE.D3D12_COLOR_WRITE_ENABLE_RED;
+        wboitAccumPSODesc.BlendState.RenderTarget._1.SrcBlend = D3D12_BLEND_ZERO;
+        wboitAccumPSODesc.BlendState.RenderTarget._1.DestBlend = D3D12_BLEND_INV_SRC_COLOR;
+        wboitAccumPSODesc.BlendState.RenderTarget._1.BlendOp = D3D12_BLEND_OP_ADD;
+        wboitAccumPSODesc.BlendState.RenderTarget._1.SrcBlendAlpha = D3D12_BLEND_ZERO;
+        wboitAccumPSODesc.BlendState.RenderTarget._1.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        wboitAccumPSODesc.BlendState.RenderTarget._1.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        wboitAccumPSODesc.BlendState.RenderTarget._1.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE_RED;
 
         fixed (D3D12_INPUT_ELEMENT_DESC* pInputElementDesc = _inputElementDesc) {
             wboitAccumPSODesc.InputLayout = new() { NumElements = (uint)_inputElementDesc.Length, pInputElementDescs = pInputElementDesc };
@@ -1260,15 +1259,15 @@ internal sealed class DX12Engine {
 
             // 光栅化状态
             RasterizerState = new() {
-                FillMode = D3D12_FILL_MODE.D3D12_FILL_MODE_SOLID,
-                CullMode = D3D12_CULL_MODE.D3D12_CULL_MODE_NONE,
+                FillMode = D3D12_FILL_MODE_SOLID,
+                CullMode = D3D12_CULL_MODE_NONE,
                 DepthClipEnable = true,
             },
 
             // 禁用深度测试
             DepthStencilState = new() {
                 DepthEnable = false,
-                DepthWriteMask = D3D12_DEPTH_WRITE_MASK.D3D12_DEPTH_WRITE_MASK_ZERO,
+                DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO,
             },
 
             // 混合状态: Result = Src * (1-SrcAlpha) + Dest * SrcAlpha
@@ -1276,23 +1275,23 @@ internal sealed class DX12Engine {
                 RenderTarget = new() {
                     _0 = new() {
                         BlendEnable = true,
-                        SrcBlend = D3D12_BLEND.D3D12_BLEND_INV_SRC_ALPHA,
-                        DestBlend = D3D12_BLEND.D3D12_BLEND_SRC_ALPHA,
-                        BlendOp = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD,
-                        SrcBlendAlpha = D3D12_BLEND.D3D12_BLEND_ONE,
-                        DestBlendAlpha = D3D12_BLEND.D3D12_BLEND_ZERO,
-                        BlendOpAlpha = D3D12_BLEND_OP.D3D12_BLEND_OP_ADD,
-                        RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE.D3D12_COLOR_WRITE_ENABLE_ALL,
+                        SrcBlend = D3D12_BLEND_INV_SRC_ALPHA,
+                        DestBlend = D3D12_BLEND_SRC_ALPHA,
+                        BlendOp = D3D12_BLEND_OP_ADD,
+                        SrcBlendAlpha = D3D12_BLEND_ONE,
+                        DestBlendAlpha = D3D12_BLEND_ZERO,
+                        BlendOpAlpha = D3D12_BLEND_OP_ADD,
+                        RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE_ALL,
                     }
                 }
             },
 
             // 单个渲染目标 (后备缓冲区)
             NumRenderTargets = 1,
-            RTVFormats = new() { _0 = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM },
+            RTVFormats = new() { _0 = DXGI_FORMAT_R8G8B8A8_UNORM },
 
             // 其他配置
-            PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE.D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+            PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
             SampleDesc = new() { Count = 1 },
             SampleMask = uint.MaxValue,
         };
@@ -1334,7 +1333,7 @@ internal sealed class DX12Engine {
 
         _commandList.OMSetRenderTargets(1, _rtvHandle, false, _dsvHandle);
 
-        _commandList.ClearDepthStencilView(_dsvHandle, D3D12_CLEAR_FLAGS.D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0);
+        _commandList.ClearDepthStencilView(_dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0);
 
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue);
 
@@ -1342,7 +1341,7 @@ internal sealed class DX12Engine {
 
         _commandList.SetGraphicsRootConstantBufferView(0, _cbvResource.GetGPUVirtualAddress());
 
-        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         // === Pass 1: 不透明物体 ===
         _commandList.SetPipelineState(_opaquePSO);
