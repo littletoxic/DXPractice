@@ -3,8 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.264" />
-    <PackageVersion Include="Microsoft.Windows.SDK.Win32Metadata" Version="68.0.4-preview" />
-    <PackageVersion Include="Silk.NET.Assimp" Version="2.22.0" />
+    <PackageVersion Include="LT.AssimpMetadata" Version="6.0.2" />
+    <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.269" />
   </ItemGroup>
 </Project>

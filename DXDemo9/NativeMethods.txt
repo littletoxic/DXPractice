@@ -1,0 +1,13 @@
+// DXDemo9
+ImportFile
+ReleaseImport
+GetMaterialTexture
+GetMaterialTextureCount
+GetMaterialString
+GetErrorString
+
+aiNode
+aiPostProcessSteps
+aiComponent
+
+AI_SCENE_FLAGS_INCOMPLETE
