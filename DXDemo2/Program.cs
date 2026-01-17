@@ -6,9 +6,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Direct3D;
 using Windows.Win32.Graphics.Direct3D12;
 using Windows.Win32.Graphics.Dxgi;
-using Windows.Win32.Graphics.Dxgi.Common;
 using Windows.Win32.UI.WindowsAndMessaging;
-using static Windows.Win32.PInvoke;
 
 namespace DXDemo2;
 
@@ -94,7 +92,7 @@ internal sealed unsafe class DX12Engine {
         D3D12GetDebugInterface(out _d3d12DebugDevice);
         _d3d12DebugDevice.EnableDebugLayer();
 
-        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_FLAGS.DXGI_CREATE_FACTORY_DEBUG;
+        _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
     }
 
     private bool CreateDevice() {
@@ -102,11 +100,11 @@ internal sealed unsafe class DX12Engine {
 
         // DX12 支持的所有功能版本，你的显卡最低需要支持 11.0
         D3D_FEATURE_LEVEL[] dx12SupportLevels = [
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_2,        // 12.2
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_1,        // 12.1
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_12_0,        // 12.0
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_1,        // 11.1
-            D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0         // 11.0
+            D3D_FEATURE_LEVEL_12_2,        // 12.2
+            D3D_FEATURE_LEVEL_12_1,        // 12.1
+            D3D_FEATURE_LEVEL_12_0,        // 12.0
+            D3D_FEATURE_LEVEL_11_1,        // 11.1
+            D3D_FEATURE_LEVEL_11_0         // 11.0
         ];
 
         for (uint i = 0; _dxgiFactory.EnumAdapters1(i, out _dxgiAdapter) != HRESULT.DXGI_ERROR_NOT_FOUND; i++) {
@@ -123,7 +121,7 @@ internal sealed unsafe class DX12Engine {
     }
 
     private void CreateCommandComponents() {
-        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE.D3D12_COMMAND_LIST_TYPE_DIRECT;
+        const D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
         D3D12_COMMAND_QUEUE_DESC queueDesc = new() {
             Type = type,
@@ -144,7 +142,7 @@ internal sealed unsafe class DX12Engine {
     }
 
     private void CreateRenderTarget() {
-        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE.D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        const D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
         D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = new() {
             NumDescriptors = FrameCount,
@@ -156,9 +154,9 @@ internal sealed unsafe class DX12Engine {
             BufferCount = FrameCount,
             Width = WindowWidth,
             Height = WindowHeight,
-            Format = DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM,
-            SwapEffect = DXGI_SWAP_EFFECT.DXGI_SWAP_EFFECT_FLIP_DISCARD,
-            BufferUsage = DXGI_USAGE.DXGI_USAGE_RENDER_TARGET_OUTPUT,
+            Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+            BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
             SampleDesc = new() {
                 Count = 1,
             },
@@ -192,18 +190,18 @@ internal sealed unsafe class DX12Engine {
     private void CreateFenceAndBarrier() {
         _renderEvent = CreateEvent(null, false, true, null);
 
-        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAGS.D3D12_FENCE_FLAG_NONE, out _fence);
+        _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
         // 设置资源屏障
         // _beginBarrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
-        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
-        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         // _endBarrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
-        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE.D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_RENDER_TARGET;
-        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATES.D3D12_RESOURCE_STATE_PRESENT;
+        _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     private void Render() {

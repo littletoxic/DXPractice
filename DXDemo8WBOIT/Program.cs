@@ -1,6 +1,4 @@
-﻿using static Windows.Win32.PInvoke;
-
-namespace DXDemo8WBOIT;
+﻿namespace DXDemo8WBOIT;
 
 internal static class Program {
 

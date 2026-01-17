@@ -3,6 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="LittleToxic.AssimpMetadata" Version="6.0.2-beta.7" />
     <PackageVersion Include="LT.AssimpMetadata" Version="6.0.2" />
     <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.269" />
   </ItemGroup>
