@@ -9,11 +9,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="LittleToxic.AssimpMetadata" />
-	  <PackageReference Include="Microsoft.Windows.CsWin32">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
+		<PackageReference Include="LittleToxic.AssimpMetadata" />
+		<PackageReference Include="Microsoft.Windows.CsWin32">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
 </Project>
