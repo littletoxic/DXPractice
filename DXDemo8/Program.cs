@@ -1,4 +1,6 @@
-﻿using System.Buffers;
+﻿// https://blog.csdn.net/DGAF2198588973/article/details/147780518
+
+using System.Buffers;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Drawing;

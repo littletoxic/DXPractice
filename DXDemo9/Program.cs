@@ -1,4 +1,5 @@
-﻿// (9) AssimpAcquntance: 初步认识并使用 Assimp 库，获取并打印《蔚蓝档案》中的 霞沢美游 gltf 模型的数据
+﻿// https://blog.csdn.net/DGAF2198588973/article/details/155643538
+
 // 鸣谢原作者大大: Onerui(momo) (https://sketchfab.com/hswangrui)
 // 模型项目地址: https://sketchfab.com/3d-models/blue-archivekasumizawa-miyu-108d81dfd5a44dab92e4dccf0cc51a02
 
