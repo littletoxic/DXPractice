@@ -2237,7 +2237,6 @@ internal sealed class DX12Engine {
         _commandList.Close();
 
         _commandQueue.ExecuteCommandLists([_commandList]);
-        _dxgiSwapChain.Present(1, 0);
 
 
         _fenceValue++;

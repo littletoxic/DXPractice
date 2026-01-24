@@ -12,7 +12,6 @@
 
 using System.Runtime.CompilerServices;
 using Assimp;
-using static Assimp.PInvoke;
 
 namespace DXDemo9;
 
