@@ -1,5 +1,8 @@
 ﻿// https://blog.csdn.net/DGAF2198588973/article/details/147780518
 
+// 鸣谢原作者大大: Mono_213 (https://sketchfab.com/Mono_213) 
+// 模型项目地址: https://sketchfab.com/3d-models/metal-gear-rising-jetstream-sam-7256008fd1124ec589fdd98d4b5acf33
+
 using System.Buffers;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -1282,7 +1285,7 @@ internal sealed class DX12Engine {
             out var signatureBlob,
             out var errorBlob).ThrowOnFailure();
 
-        if (errorBlob != null) {
+        if (errorBlob is not null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlob.GetBufferPointer());
             Debug.WriteLine(errorMessage);
         }
