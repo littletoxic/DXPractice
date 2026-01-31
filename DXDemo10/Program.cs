@@ -1,4 +1,4 @@
-﻿// https://blog.csdn.net/DGAF2198588973/article/details/147780518
+﻿// https://blog.csdn.net/DGAF2198588973/article/details/155771199
 
 // 鸣谢原作者大大: Mono_213 (https://sketchfab.com/Mono_213) 
 // 模型项目地址: https://sketchfab.com/3d-models/metal-gear-rising-jetstream-sam-7256008fd1124ec589fdd98d4b5acf33
@@ -616,9 +616,9 @@ internal sealed class DX12Engine {
 
     private unsafe bool STEP10_OpenModelFile() {
         _modelScene = (IntPtr)ImportFile(ModelFileName, ModelImportFlag);
-        ref var modelScene = ref Unsafe.AsRef<Scene>((void*)_modelScene);
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
-        if (Unsafe.IsNullRef(ref modelScene) || (modelScene.mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || modelScene.mRootNode == null) {
+        if (Unsafe.IsNullRef(ref modelScene) || (modelScene.mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || Unsafe.IsNullRef(ref modelScene.RootNode)) {
             var assimpErrorMsg = GetErrorString();
             var errorMsg = $"载入文件 {ModelFileName} 失败！错误原因：{assimpErrorMsg}";
 
@@ -629,11 +629,10 @@ internal sealed class DX12Engine {
         return true;
     }
 
-    private unsafe void STEP11_AddModelMaterials() {
-        ref var modelScene = ref Unsafe.AsRef<Scene>((void*)_modelScene);
+    private void STEP11_AddModelMaterials() {
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
-        for (uint i = 0; i < modelScene.mNumMaterials; i++) {
-            ref var material = ref *modelScene.mMaterials[i];
+        foreach (ref var material in modelScene.Materials) {
 
             if (GetMaterialTexture(material, TextureType.DIFFUSE, 0, out var textureFilePath) == ReturnCode.SUCCESS) {
                 var mt = new Material() {
@@ -650,38 +649,37 @@ internal sealed class DX12Engine {
         }
     }
 
-    private unsafe void STEP12_AddModelData() {
-        ref var modelScene = ref Unsafe.AsRef<Scene>((void*)_modelScene);
+    private void STEP12_AddModelData() {
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
         int currentMeshVertexGroupOffset = 0;
         uint currentMeshIndexGroupOffset = 0;
 
-        for (uint i = 0; i < modelScene.mNumMeshes; i++) {
-            ref var mesh = ref *modelScene.mMeshes[i];
+        foreach (ref var mesh in modelScene.Meshes) {
 
             if (mesh.mNumVertices == 0)
                 continue;
 
-            for (uint j = 0; j < mesh.mNumVertices; j++) {
+            for (int j = 0; j < mesh.mNumVertices; j++) {
                 var newVertex = new Vertex {
-                    Position = new(mesh.mVertices[j].x, mesh.mVertices[j].y, mesh.mVertices[j].z, 1.0f)
+                    Position = new(mesh.Vertices[j].x, mesh.Vertices[j].y, mesh.Vertices[j].z, 1.0f)
                 };
 
                 // 新节点纹理 UV，如果有就添加，没有就默认 (-1, -1)
                 // 注意这个 0 指的是第 0 号 UV 通道 (详情请见 UE5 文档: UV 通道)
                 // 对于同一个顶点，不同的 UV 通道可以有不同的 UV 坐标，常用于光照，但我们这里不涉及，直接获取第 0 号纹理 UV 即可
                 if (mesh.HasTextureCoords(0)) {
-                    newVertex.TexCoordUV = new(mesh.mTextureCoords._0[j].x, mesh.mTextureCoords._0[j].y);
+                    newVertex.TexCoordUV = new(mesh.TextureCoords(0)[j].x, mesh.TextureCoords(0)[j].y);
                 } else {
                     newVertex.TexCoordUV = new(-1.0f, -1.0f); // 默认纹理 UV 坐标，Pixel Shader 会进行处理
                 }
                 _vertexGroup.Add(newVertex);
             }
 
-            for (uint j = 0; j < mesh.mNumFaces; j++) {
-                _indexGroup.Add(mesh.mFaces[j].mIndices[0]);
-                _indexGroup.Add(mesh.mFaces[j].mIndices[1]);
-                _indexGroup.Add(mesh.mFaces[j].mIndices[2]);
+            for (int j = 0; j < mesh.mNumFaces; j++) {
+                _indexGroup.Add(mesh.Faces[j].Indices[0]);
+                _indexGroup.Add(mesh.Faces[j].Indices[1]);
+                _indexGroup.Add(mesh.Faces[j].Indices[2]);
             }
 
             var newMesh = new Mesh() {
@@ -701,8 +699,8 @@ internal sealed class DX12Engine {
         }
     }
 
-    private unsafe void STEP13_CalcModelBoundingBox() {
-        ref var modelScene = ref Unsafe.AsRef<Scene>((void*)_modelScene);
+    private void STEP13_CalcModelBoundingBox() {
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
         // 初始化包围盒
         _modelBoundingBox = new() {
@@ -715,8 +713,7 @@ internal sealed class DX12Engine {
             MaxBoundsZ = float.MinValue,
         };
 
-        for (uint i = 0; i < modelScene.mNumMeshes; i++) {
-            ref var mesh = ref *modelScene.mMeshes[i];
+        foreach (ref var mesh in modelScene.Meshes) {
 
             _modelBoundingBox.MinBoundsX = MathF.Min(_modelBoundingBox.MinBoundsX, mesh.mAABB.mMin.x);
             _modelBoundingBox.MinBoundsY = MathF.Min(_modelBoundingBox.MinBoundsY, mesh.mAABB.mMin.y);
@@ -1578,7 +1575,7 @@ internal sealed class DX12Engine {
 internal static class Program {
 
     [STAThread]
-    static void Main() {
+    private static void Main() {
         using var hInstance = GetModuleHandle();
 
         DX12Engine.Run(hInstance);

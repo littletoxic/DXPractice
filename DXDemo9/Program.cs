@@ -22,21 +22,25 @@ internal sealed class Program {
     // 递归展开计算模型骨骼节点，打印每个骨骼节点的名称，大部分情况下节点都是骨骼，节点名和骨骼名相同
     // 骨骼在模型中的呈现形式是骨骼树，在骨骼动画中，父节点会影响子节点，子节点拿到的偏移矩阵是相对于所属父节点的，所以要递归展开计算
     // Assimp 中，节点的变换矩阵会影响节点下的全部属性，包括网格、骨骼、子节点，骨骼名是唯一的
-    private static unsafe void ModelNodeTraversal(ref Node node, string nodeBaseStr, uint tier) {
+    private static void ModelNodeTraversal(ref Node node, string nodeBaseStr, uint tier) {
         Console.WriteLine($"{nodeBaseStr}┗━━ 节点名: {node.mName} (层级: {tier}, 子节点数: {node.mNumChildren})");
 
         // 当前节点打印完成，下一行打印子节点时，在前面添加空格，便于区分
         nodeBaseStr += "  ";
 
         // 遍历子节点，打印子节点的名称
-        for (uint i = 0; i < node.mNumChildren; i++) {
-            ModelNodeTraversal(ref *node.mChildren[i], nodeBaseStr, tier + 1);
+        //for (int i = 0; i < node.mNumChildren; i++) {
+        //    ModelNodeTraversal(ref node.Children[i], nodeBaseStr, tier + 1);
+        //}
+
+        foreach (ref var child in node.Children) {
+            ModelNodeTraversal(ref child, nodeBaseStr, tier + 1);
         }
 
         _totalNodeNum++;  // 总节点数 +1
     }
 
-    private unsafe static void Main() {
+    private static void Main() {
 
         var modelFileName = "miyu/scene.gltf";  // 模型文件名
 
@@ -54,10 +58,10 @@ internal sealed class Program {
 
         // 读取模型数据，数据会存储在 Scene 对象
 
-        ref var modelScene = ref *ImportFile(modelFileName, modelImportFlag);
+        ref var modelScene = ref ImportFileR(modelFileName, modelImportFlag);
 
         // 如果模型没有成功载入 (无法载入，载入未完成，载入后无根节点)
-        if (Unsafe.IsNullRef(ref modelScene) || (modelScene.mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || modelScene.mRootNode == null) {
+        if (Unsafe.IsNullRef(ref modelScene) || (modelScene.mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || Unsafe.IsNullRef(ref modelScene.RootNode)) {
             var errorMsg = GetErrorString();
             Console.WriteLine($"载入文件 {modelFileName} 失败！错误原因：{errorMsg}");
             return;
@@ -73,7 +77,7 @@ internal sealed class Program {
         string nodeBaseStr = "";
 
         // 从根节点开始递归打印
-        ModelNodeTraversal(ref *modelScene.mRootNode, nodeBaseStr, 1);
+        ModelNodeTraversal(ref modelScene.RootNode, nodeBaseStr, 1);
 
         Console.WriteLine($"\n总节点数: {_totalNodeNum}\n");
         Console.WriteLine("------------------------------------------------------------------------\n");
@@ -87,9 +91,10 @@ internal sealed class Program {
         var materialGroup = new List<string>();
 
         // 遍历模型中的所有材质
-        for (uint i = 0; i < modelScene.mNumMaterials; i++) {
-            // Assimp 解析出来的模型材质
-            ref var material = ref *modelScene.mMaterials[i];
+        foreach (ref var material in modelScene.Materials) {
+            //for (int i = 0; i < modelScene.mNumMaterials; i++) {
+            //    // Assimp 解析出来的模型材质
+            //    ref var material = ref modelScene.Materials[i];
 
             // 获取材质名
             GetMaterialString(material, _AI_MATKEY_NAME_BASE, 0, 0, out var materialName);
@@ -135,9 +140,10 @@ internal sealed class Program {
 
         // Mesh 网格相当于模型的皮肤，它存储了模型要渲染的顶点信息。在骨骼模型中，Mesh 需要依赖骨骼节点才能正确渲染
         // 遍历模型的所有 Mesh 网格
-        for (uint i = 0; i < modelScene.mNumMeshes; i++) {
-            // 当前网格
-            ref var mesh = ref *modelScene.mMeshes[i];
+        foreach (ref var mesh in modelScene.Meshes) {
+            //for (int i = 0; i < modelScene.mNumMeshes; i++) {
+            //    // 当前网格
+            //    ref var mesh = ref modelScene.Meshes[i];
 
             Console.WriteLine($"网格名: {mesh.mName}");
             Console.WriteLine($"顶点数: {mesh.mNumVertices}");
@@ -151,8 +157,9 @@ internal sealed class Program {
                 Console.WriteLine("受影响的骨骼:");
 
                 // 遍历骨骼
-                for (uint j = 0; j < mesh.mNumBones; j++) {
-                    Console.WriteLine(mesh.mBones[j]->mName);
+                //for (uint j = 0; j < mesh.mNumBones; j++) {
+                foreach (ref var bone in mesh.Bones) {
+                    Console.WriteLine(bone.mName);
                 }
             } else {  // 没有绑定骨骼，网格上的顶点坐标就表示相对于整个模型的绝对位置，即使是骨骼模型，也会有网格没被骨骼影响到
                 Console.WriteLine("没有骨骼影响！");
@@ -172,7 +179,7 @@ internal sealed class Program {
         float maxBoundsX, maxBoundsY, maxBoundsZ;  // 最大坐标点
 
         // 设置初始值，模型 AABB 包围盒，用于调整摄像机视野，防止模型在摄像机视野外飞出去
-        ref var initialMesh = ref *modelScene.mMeshes[0];
+        ref var initialMesh = ref modelScene.Meshes[0];
         minBoundsX = initialMesh.mAABB.mMin.x;
         minBoundsY = initialMesh.mAABB.mMin.y;
         minBoundsZ = initialMesh.mAABB.mMin.z;
@@ -181,9 +188,7 @@ internal sealed class Program {
         maxBoundsZ = initialMesh.mAABB.mMax.z;
 
         // 逐网格遍历，计算整个模型的 AABB 包围盒，请注意导入模型时要指定 GenBoundingBoxes，否则 MAABB 成员会没有数据
-        for (uint i = 1; i < modelScene.mNumMeshes; i++) {
-            // 当前网格
-            ref var mesh = ref *modelScene.mMeshes[i];
+        foreach (ref var mesh in modelScene.Meshes) {
 
             // 更新总包围盒
             minBoundsX = Math.Min(mesh.mAABB.mMin.x, minBoundsX);

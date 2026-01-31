@@ -6,6 +6,10 @@ namespace Assimp;
 
 internal static partial class PInvoke {
     internal const string _AI_MATKEY_NAME_BASE = "?mat.name";
+
+    internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) {
+        return ref *ImportFile(pFile, pFlags);
+    }
 }
 
 internal partial struct AssimpString {
@@ -13,17 +17,61 @@ internal partial struct AssimpString {
         Encoding.UTF8.GetString(MemoryMarshal.CreateReadOnlySpan(ref Unsafe.As<__CHAR_1024, byte>(ref data), (int)length));
 }
 
+internal partial struct Node {
+    internal readonly unsafe PtrSpan<Node> Children => new(mChildren, mNumChildren);
+}
+
+internal partial struct Scene {
+    internal readonly unsafe PtrSpan<Material> Materials => new(mMaterials, mNumMaterials);
+
+    internal readonly unsafe ref Node RootNode => ref *mRootNode;
+
+    internal readonly unsafe PtrSpan<Mesh> Meshes => new(mMeshes, mNumMeshes);
+}
+
 internal partial struct Mesh {
-    public bool HasTextureCoords(uint index) {
+    internal readonly unsafe PtrSpan<Bone> Bones => new(mBones, mNumBones);
+
+    internal unsafe bool HasTextureCoords(uint index) {
         if (index >= AI_MAX_NUMBER_OF_TEXTURECOORDS) {
             return false;
         }
-        return !Unsafe.IsNullRef(ref mTextureCoords[index]) && mNumVertices > 0;
+        return mTextureCoords[index] != null && mNumVertices > 0;
     }
 
+    internal readonly unsafe ReadOnlySpan<AssimpVector3D> Vertices => new(mVertices, (int)mNumVertices);
 
+    internal readonly unsafe ReadOnlySpan<Face> Faces => new(mFaces, (int)mNumFaces);
+
+    internal readonly unsafe ReadOnlySpan<AssimpVector3D> TextureCoords(uint index) {
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, AI_MAX_NUMBER_OF_TEXTURECOORDS);
+        return new(mTextureCoords[index], (int)mNumVertices);
+    }
+}
+
+internal partial struct Face {
+    internal readonly unsafe ReadOnlySpan<uint> Indices => new(mIndices, (int)mNumIndices);
+}
+
+internal unsafe ref struct PtrSpan<T>(T** ptr, uint count) where T : unmanaged {
+    public readonly int Length => (int)count;
+    public readonly ref T this[int index] => ref *ptr[index];
+    public readonly PtrSpanEnumerator<T> GetEnumerator() => new(ptr, count);
+}
+
+internal unsafe ref struct PtrSpanEnumerator<T>(T** ptr, uint count) where T : unmanaged {
+    private int _index = -1;
+    public readonly ref T Current => ref *ptr[_index];
+    public bool MoveNext() => ++_index < (int)count;
 }
 
 internal partial struct P__AssimpVector3D_8 {
-    public unsafe ref AssimpVector3D this[uint index] => ref *((AssimpVector3D**)Unsafe.AsPointer(ref this))[index];
+    public unsafe AssimpVector3D* this[uint index] => ((AssimpVector3D**)Unsafe.AsPointer(ref this))[index];
+}
+
+internal static class Extensions {
+    extension(Unsafe) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static unsafe ref T AsRef<T>(nint source) where T : allows ref struct => ref Unsafe.AsRef<T>((void*)source);
+    }
 }
