@@ -1,7 +1,7 @@
 ﻿// https://blog.csdn.net/DGAF2198588973/article/details/155771199
 
-// 鸣谢原作者大大: Mono_213 (https://sketchfab.com/Mono_213) 
-// 模型项目地址: https://sketchfab.com/3d-models/metal-gear-rising-jetstream-sam-7256008fd1124ec589fdd98d4b5acf33
+// 鸣谢原作者大大: close2animation (https://sketchfab.com/close2animation)
+// 模型项目地址: https://sketchfab.com/3d-models/kurumi-model-f776c64883414c71b9441b8c45342533
 
 using System.Buffers;
 using System.Collections.Frozen;
@@ -22,7 +22,7 @@ using Windows.Win32.System.Com;
 using Windows.Win32.System.SystemServices;
 using Windows.Win32.UI.WindowsAndMessaging;
 
-namespace DXDemo10;
+namespace DXDemo11;
 
 internal static class DX12TextureHelper {
 
@@ -153,14 +153,13 @@ internal sealed class Camera {
     }
 
     internal Camera() {
-        // 模型矩阵，这里设置绕 x 轴旋转 90°，是因为模型作者使用的建模软件不同，垂直向上的坐标轴有差异
-        // 有些是 y 轴朝上建模的，有些是 z 轴朝上建模的 (例如这里是 Z 轴方向朝上，需要绕 x 轴旋转 90° 才行)
-        _modelMatrix = Matrix4x4.CreateRotationX(MathF.PI / 2.0f);
+        // 模型矩阵，这里设置成单位矩阵，是因为模型导入的时候已经是 y 轴朝上的了，无需再进行旋转
+        _modelMatrix = Matrix4x4.Identity;
         _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
         _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
 
-        _eyePosition = new Vector3(4, 5, -4);
-        _focusPosition = new Vector3(4, 3, 4);
+        _eyePosition = new Vector3(1, 1, 1);
+        _focusPosition = new Vector3(0, 0, 0);
         _upDirection = new Vector3(0, 1, 0);
 
         _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
@@ -242,9 +241,22 @@ internal sealed class Camera {
     }
 }
 
+[InlineArray(4)]
+internal struct Buffer4<T> where T : unmanaged {
+    private T _element0;
+}
+
+[InlineArray(512)]
+internal struct Buffer512<T> where T : unmanaged {
+    private T _element0;
+}
+
 internal struct Vertex {
     internal Vector4 Position;
     internal Vector2 TexCoordUV;
+    internal Vector4 Color;
+    internal Buffer4<int> BoneIndices;
+    internal Buffer4<float> BoneWeights;
 }
 
 internal sealed class Material {
@@ -332,8 +344,8 @@ internal sealed class DX12Engine {
     private readonly DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
 
-    private const string ModelFileName = "sam/scene.gltf";
-    private const string ModelTextureFilePath = "sam/";
+    private const string ModelFileName = "kurumi/scene.gltf";
+    private const string ModelTextureFilePath = "kurumi/";
     private nint _modelScene;
 
     // 导入模型使用的标志
@@ -348,7 +360,12 @@ internal sealed class DX12Engine {
 
     private readonly List<Material> _materialGroup = [];
 
+    private readonly Dictionary<string, int> _boneNodeIndexGroup = [];
+
+    private readonly List<Matrix4x4> _boneNodeTransformGroup = [];
+
     private readonly List<Vertex> _vertexGroup = [];
+    private readonly List<int> _vertexWeightsCountGroup = [];
     private readonly List<uint> _indexGroup = [];
 
     private readonly List<Mesh> _meshGroup = [];
@@ -382,6 +399,7 @@ internal sealed class DX12Engine {
 
     private struct CBuffer {
         internal Matrix4x4 MVPMatrix;
+        internal Buffer512<Matrix4x4> BoneTransformMatrix;
     }
     private ID3D12Resource _cbvResource;
     private nint mvpBuffer;
@@ -390,6 +408,9 @@ internal sealed class DX12Engine {
 
     private static readonly PCSTR Position = CreatePCSTR("POSITION");
     private static readonly PCSTR TexCoord = CreatePCSTR("TEXCOORD");
+    private static readonly PCSTR Color = CreatePCSTR("COLOR");
+    private static readonly PCSTR BlendIndices = CreatePCSTR("BLENDINDICES");
+    private static readonly PCSTR BlendWeight = CreatePCSTR("BLENDWEIGHT");
 
     private ID3D12PipelineState _pipelineStateObject;
 
@@ -582,8 +603,8 @@ internal sealed class DX12Engine {
 
         var depthStencilBufferClearValue = new D3D12_CLEAR_VALUE() {
             Format = _dsvFormat,
-            Anonymous = new D3D12_CLEAR_VALUE._Anonymous_e__Union() {
-                DepthStencil = new D3D12_DEPTH_STENCIL_VALUE() {
+            Anonymous = new() {
+                DepthStencil = new() {
                     Depth = 1.0f,
                     Stencil = 0,
                 }
@@ -618,7 +639,7 @@ internal sealed class DX12Engine {
         _modelScene = (IntPtr)ImportFile(ModelFileName, ModelImportFlag);
         ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
-        if (Unsafe.IsNullRef(ref modelScene) || (modelScene.mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || Unsafe.IsNullRef(ref modelScene.RootNode)) {
+        if (Unsafe.IsNullRef(ref modelScene) || (modelScene.mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || modelScene.mRootNode == null) {
             var assimpErrorMsg = GetErrorString();
             var errorMsg = $"载入文件 {ModelFileName} 失败！错误原因：{assimpErrorMsg}";
 
@@ -634,7 +655,13 @@ internal sealed class DX12Engine {
 
         foreach (ref var material in modelScene.Materials) {
 
-            if (GetMaterialTexture(material, TextureType.DIFFUSE, 0, out var textureFilePath) == ReturnCode.SUCCESS) {
+            if (GetMaterialTexture(material, TextureType.EMISSIVE, 0, out var textureFilePath) == ReturnCode.SUCCESS) {
+                var mt = new Material() {
+                    FilePath = ModelTextureFilePath + textureFilePath,
+                    Type = TextureType.EMISSIVE,
+                };
+                _materialGroup.Add(mt);
+            } else if (GetMaterialTexture(material, TextureType.DIFFUSE, 0, out textureFilePath) == ReturnCode.SUCCESS) {
                 var mt = new Material() {
                     FilePath = ModelTextureFilePath + textureFilePath,
                     Type = TextureType.DIFFUSE,
@@ -649,20 +676,48 @@ internal sealed class DX12Engine {
         }
     }
 
+    private void CalcModelNodeMatrix(ref Node node, Matrix4x4 parentNodeTransform) {
+
+        var currentTransformMatrix = (Matrix4x4)node.mTransformation;
+
+        currentTransformMatrix = parentNodeTransform * currentTransformMatrix;
+
+        var boneName = node.mName.ToString();
+
+        _boneNodeTransformGroup.Add(currentTransformMatrix);
+        _boneNodeIndexGroup[boneName] = _boneNodeTransformGroup.Count - 1;
+
+        // 注意！有些网格没有绑定到骨骼上，但是它们属于某个骨骼节点，仍然是需要进行骨骼变换的，否则会出错
+        // 没有骨骼的下文 mNumBones 会是 0，需要特殊处理，这里要先添加并更新节点影响网格对应的名字 _Mesh_i
+        // 在 Assimp 中，如果网格没有绑定到骨骼上，一个网格只会对应一个节点，所以下文没有骨骼的网格会用 _Mesh_i 索引
+        foreach (var meshIndex in node.Meshes) {
+            _boneNodeIndexGroup[$"_Mesh_{meshIndex}"] = _boneNodeTransformGroup.Count - 1;
+        }
+
+        foreach (ref var childNode in node.Children) {
+            CalcModelNodeMatrix(ref childNode, currentTransformMatrix);
+        }
+    }
+
     private void STEP12_AddModelData() {
         ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+
+        var modelMatrix = Matrix4x4.Identity;
+
+        CalcModelNodeMatrix(ref modelScene.RootNode, modelMatrix);
 
         int currentMeshVertexGroupOffset = 0;
         uint currentMeshIndexGroupOffset = 0;
 
-        foreach (ref var mesh in modelScene.Meshes) {
+        for (int i = 0; i < modelScene.mNumMeshes; i++) {
+            ref var mesh = ref modelScene.Meshes[i];
 
             if (mesh.mNumVertices == 0)
                 continue;
 
             for (int j = 0; j < mesh.mNumVertices; j++) {
                 var newVertex = new Vertex {
-                    Position = new(mesh.Vertices[j].x, mesh.Vertices[j].y, mesh.Vertices[j].z, 1.0f)
+                    Position = new(mesh.Vertices[j], 1.0f)
                 };
 
                 // 新节点纹理 UV，如果有就添加，没有就默认 (-1, -1)
@@ -673,6 +728,15 @@ internal sealed class DX12Engine {
                 } else {
                     newVertex.TexCoordUV = new(-1.0f, -1.0f); // 默认纹理 UV 坐标，Pixel Shader 会进行处理
                 }
+
+                if (mesh.HasVertexColors(0)) {
+                    newVertex.Color = mesh.Colors(0)[j];
+                } else {
+                    newVertex.Color = new(1.0f, 1.0f, 1.0f, 1.0f);
+                }
+
+                _vertexWeightsCountGroup.Add(0);
+
                 _vertexGroup.Add(newVertex);
             }
 
@@ -680,6 +744,48 @@ internal sealed class DX12Engine {
                 _indexGroup.Add(mesh.Faces[j].Indices[0]);
                 _indexGroup.Add(mesh.Faces[j].Indices[1]);
                 _indexGroup.Add(mesh.Faces[j].Indices[2]);
+            }
+
+            if (mesh.HasBones()) {
+
+                foreach (ref var currentBone in mesh.Bones) {
+
+                    int boneIndex = _boneNodeIndexGroup[currentBone.mName.ToString()];
+
+                    var meshToBoneSpaceMatrix = (Matrix4x4)currentBone.mOffsetMatrix;
+
+                    var finalSkinnedMeshIndex = _boneNodeTransformGroup.Count;
+                    _boneNodeIndexGroup[$"_Mesh_{i}_To_Bone_{boneIndex}"] = finalSkinnedMeshIndex;
+
+                    meshToBoneSpaceMatrix = _boneNodeTransformGroup[boneIndex] * meshToBoneSpaceMatrix;
+
+                    _boneNodeTransformGroup.Add(meshToBoneSpaceMatrix);
+
+                    foreach (var vertexWeight in currentBone.Weights) {
+                        var vertexId = currentMeshVertexGroupOffset + vertexWeight.mVertexId;
+                        var weight = vertexWeight.mWeight;
+                        var weightsCount = _vertexWeightsCountGroup[(int)vertexId];
+
+                        var verticesSpan = CollectionsMarshal.AsSpan(_vertexGroup);
+                        verticesSpan[(int)vertexId].BoneIndices[weightsCount] = finalSkinnedMeshIndex;
+                        verticesSpan[(int)vertexId].BoneWeights[weightsCount] = weight;
+                        _vertexWeightsCountGroup[(int)vertexId]++;
+                    }
+                }
+
+            } else {
+                var boneIndex = _boneNodeIndexGroup[$"_Mesh_{i}"];
+
+                for (int j = 0; j < mesh.mNumVertices; j++) {
+                    var vertexId = currentMeshVertexGroupOffset + j;
+                    var weight = 1.0f;
+                    var weightsCount = _vertexWeightsCountGroup[vertexId];
+
+                    var verticesSpan = CollectionsMarshal.AsSpan(_vertexGroup);
+                    verticesSpan[vertexId].BoneIndices[weightsCount] = boneIndex;
+                    verticesSpan[vertexId].BoneWeights[weightsCount] = weight;
+                    _vertexWeightsCountGroup[vertexId]++;
+                }
             }
 
             var newMesh = new Mesh() {
@@ -696,6 +802,13 @@ internal sealed class DX12Engine {
 
             _meshGroup.Add(newMesh);
 
+        }
+
+        // 读取所有骨骼、网格数据完成后，对 BoneNode_TransformGroup 里面的所有矩阵进行转置，不转会渲染错误
+        // 因为在 shader 中我们指定了 row_major 让 GPU 按行读取矩阵，但从 Assimp 获取并变换的矩阵是列主序的
+        // 我们需要使用 XMMatrixTranspose 转置这些矩阵，让这些矩阵变成行主序
+        for (int i = 0; i < _boneNodeTransformGroup.Count; i++) {
+            _boneNodeTransformGroup[i] = Matrix4x4.Transpose(_boneNodeTransformGroup[i]);
         }
     }
 
@@ -1299,7 +1412,7 @@ internal sealed class DX12Engine {
         var psoDesc = new D3D12_GRAPHICS_PIPELINE_STATE_DESC();
 
         var inputLayoutDesc = new D3D12_INPUT_LAYOUT_DESC();
-        var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[2];
+        var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[5];
 
         inputElementDesc[0] = new() {
             SemanticName = Position,
@@ -1307,7 +1420,6 @@ internal sealed class DX12Engine {
             Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
             InputSlot = 0,
             AlignedByteOffset = 0,
-            // 输入流类型，一种是我们现在用的 D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA 逐顶点输入流,还有一种叫逐实例输入流，后面再学
             InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
@@ -1317,14 +1429,42 @@ internal sealed class DX12Engine {
             SemanticIndex = 0,
             Format = DXGI_FORMAT_R32G32_FLOAT,
             InputSlot = 0,
-            // 在输入槽中的偏移，因为 position 与 color 在同一输入槽(0号输入槽)
-            // position 是 float4，有 4 个 float ，每个 float 占 4 个字节，所以要偏移 4*4=16 个字节，这样才能确定 color 参数的位置，不然装配的时候会覆盖原先 position 的数据
             AlignedByteOffset = 16,
             InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             InstanceDataStepRate = 0,
         };
 
-        inputLayoutDesc.NumElements = 2;
+        inputElementDesc[2] = new() {
+            SemanticName = Color,
+            SemanticIndex = 0,
+            Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+            InputSlot = 0,
+            AlignedByteOffset = 24,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InstanceDataStepRate = 0,
+        };
+
+        inputElementDesc[3] = new() {
+            SemanticName = BlendIndices,
+            SemanticIndex = 0,
+            Format = DXGI_FORMAT_R32G32B32A32_UINT,
+            InputSlot = 0,
+            AlignedByteOffset = 40,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InstanceDataStepRate = 0,
+        };
+
+        inputElementDesc[4] = new() {
+            SemanticName = BlendWeight,
+            SemanticIndex = 0,
+            Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+            InputSlot = 0,
+            AlignedByteOffset = 56,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InstanceDataStepRate = 0,
+        };
+
+        inputLayoutDesc.NumElements = 5;
         inputLayoutDesc.pInputElementDescs = inputElementDesc;
         psoDesc.InputLayout = inputLayoutDesc;
 
@@ -1388,6 +1528,21 @@ internal sealed class DX12Engine {
         psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
         psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 
+        psoDesc.BlendState.RenderTarget._0.BlendEnable = true; // 开启混合，因为模型用到了自发光和默认纹理
+
+        // 下面三个选项控制 RGB 通道的混合，Alpha 通道与 RGB 通道的混合是分开的，这一点请留意！
+        // Result = Src * SrcA + Dest * (1 - SrcA)
+        psoDesc.BlendState.RenderTarget._0.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        psoDesc.BlendState.RenderTarget._0.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        psoDesc.BlendState.RenderTarget._0.BlendOp = D3D12_BLEND_OP_ADD;
+
+        // 下面的三个选项控制 Alpha 通道的混合，Alpha 通道与 RGB 通道的混合是分开的，这一点请留意！
+        // ResultA = SrcA * 1 + DstA * 0
+        psoDesc.BlendState.RenderTarget._0.SrcBlendAlpha = D3D12_BLEND_ONE;
+        psoDesc.BlendState.RenderTarget._0.DestBlendAlpha = D3D12_BLEND_ZERO;
+        psoDesc.BlendState.RenderTarget._0.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
         psoDesc.RTVFormats._0 = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -1398,8 +1553,10 @@ internal sealed class DX12Engine {
         _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObject);
     }
 
-    private unsafe void UpdateConstantBuffer() {
-        Unsafe.AsRef<CBuffer>((void*)mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
+    private void UpdateConstantBuffer() {
+        ref var buffer = ref Unsafe.AsRef<CBuffer>(mvpBuffer);
+        buffer.MVPMatrix = _firstCamera.MVPMatrix;
+        CollectionsMarshal.AsSpan(_boneNodeTransformGroup).CopyTo(buffer.BoneTransformMatrix);
     }
 
     private unsafe void Render() {
@@ -1575,7 +1732,7 @@ internal sealed class DX12Engine {
 internal static class Program {
 
     [STAThread]
-    private static void Main() {
+    static void Main() {
         using var hInstance = GetModuleHandle();
 
         DX12Engine.Run(hInstance);
