@@ -126,7 +126,6 @@ internal sealed class DX12Engine {
     // WBOIT PSO
     private ID3D12PipelineState _wboitAccumPSO;
     private ID3D12PipelineState _wboitCompositePSO;
-    private ComPtr<ID3D12RootSignature> _wboitCompositeRootSignature;
 
     private readonly Camera _firstCamera = new();
 
@@ -742,7 +741,7 @@ internal sealed class DX12Engine {
 
         var srvDescriptorDesc = new D3D12_DESCRIPTOR_RANGE() {
             RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            NumDescriptors = 1,
+            NumDescriptors = 2,
             BaseShaderRegister = 0,
             RegisterSpace = 0,
             OffsetInDescriptorsFromTableStart = 0,
@@ -802,58 +801,6 @@ internal sealed class DX12Engine {
             signatureBlob.GetBufferSize(),
             out var rootSignature);
         _rootSignature = new(rootSignature);
-    }
-
-    private unsafe void CreateWBOITCompositeRootSignature() {
-        var rootParameters = stackalloc D3D12_ROOT_PARAMETER[1];
-
-        // 描述符表包含 2 个 SRV (累积纹理 t0 + 透明度纹理 t1)
-        var srvDescriptorRange = new D3D12_DESCRIPTOR_RANGE() {
-            RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            NumDescriptors = 2,
-            BaseShaderRegister = 0,
-            RegisterSpace = 0,
-            OffsetInDescriptorsFromTableStart = 0,
-        };
-
-        var rootDescriptorTableDesc = new D3D12_ROOT_DESCRIPTOR_TABLE() {
-            NumDescriptorRanges = 1,
-            pDescriptorRanges = &srvDescriptorRange,
-        };
-
-        rootParameters[0] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
-            ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-            Anonymous = new() { DescriptorTable = rootDescriptorTableDesc },
-        };
-
-        // 合成 Pass 不需要静态采样器，因为使用 Load() 而非 Sample()
-        var rootSignatureDesc = new D3D12_ROOT_SIGNATURE_DESC() {
-            NumParameters = 1,
-            pParameters = rootParameters,
-            NumStaticSamplers = 0,
-            pStaticSamplers = null,
-            // 合成 Pass 使用 SV_VertexID 生成顶点，不需要 IA 输入
-            Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE
-        };
-
-        D3D12SerializeRootSignature(
-            rootSignatureDesc,
-            D3D_ROOT_SIGNATURE_VERSION_1_0,
-            out var signatureBlob,
-            out var errorBlob).ThrowOnFailure();
-
-        if (errorBlob != null) {
-            var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlob.GetBufferPointer());
-            Debug.WriteLine($"WBOIT Composite RootSignature Error: {errorMessage}");
-        }
-
-        _d3d12Device.CreateRootSignature<ID3D12RootSignature>(
-            0,
-            signatureBlob.GetBufferPointer(),
-            signatureBlob.GetBufferSize(),
-            out var rootSignature);
-        _wboitCompositeRootSignature = new(rootSignature);
     }
 
     // 这里的代码和原教程不同，只将 D3D12_INPUT_ELEMENT_DESC 作为成员变量保存
@@ -1242,7 +1189,7 @@ internal sealed class DX12Engine {
         }
 
         var wboitCompositePSODesc = new D3D12_GRAPHICS_PIPELINE_STATE_DESC() {
-            pRootSignature = (ID3D12RootSignature_unmanaged*)_wboitCompositeRootSignature.Ptr,
+            pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr,
 
             VS = new() {
                 pShaderBytecode = vertexShaderBlob.GetBufferPointer(),
@@ -1371,13 +1318,12 @@ internal sealed class DX12Engine {
         // 切换到后备缓冲区
         _commandList.OMSetRenderTargets(1, _rtvHandle, false, default);
 
-        // 设置合成根签名和 PSO
-        _commandList.SetGraphicsRootSignature(_wboitCompositeRootSignature.Managed);
+        // 设置合成 PSO (复用原根签名，无需重新设置)
         _commandList.SetPipelineState(_wboitCompositePSO);
 
         // 绑定 WBOIT SRV 堆
         _commandList.SetDescriptorHeaps([_wboitSRVHeap]);
-        _commandList.SetGraphicsRootDescriptorTable(0, _wboitSrvGpuHandle);
+        _commandList.SetGraphicsRootDescriptorTable(1, _wboitSrvGpuHandle);
 
         // 绘制全屏三角形
         _commandList.DrawInstanced(3, 1, 0, 0);
@@ -1507,7 +1453,6 @@ internal sealed class DX12Engine {
         engine.CreateWBOITResources();
 
         engine.CreateRootSignature();
-        engine.CreateWBOITCompositeRootSignature();
 
         engine.CreateInputLayout();
         engine.CreateOpaquePSO();
