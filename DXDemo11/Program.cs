@@ -1295,7 +1295,7 @@ internal sealed class DX12Engine {
 
         StartCommandExecute();
 
-        WaitForSingleObject(_renderEvent, INFINITE);
+        // 下一个等待就是 RenderLoop 的 MsgWaitForMultipleObjects，不需要用 WaitForSingleObject 了
     }
 
     private unsafe void STEP18_CreateCBVResource() {
@@ -1617,7 +1617,6 @@ internal sealed class DX12Engine {
 
     private void STEP21_RenderLoop() {
         bool exit = false;
-        Render();
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
                 [new(_renderEvent.DangerousGetHandle())],
