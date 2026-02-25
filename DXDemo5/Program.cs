@@ -340,7 +340,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateFenceAndBarrier() {
-        _renderEvent = CreateEvent(null, false, true, null);
+        _renderEvent = CreateEvent(null, false, false, null);
 
         _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
