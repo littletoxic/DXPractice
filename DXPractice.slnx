@@ -4,6 +4,7 @@
     <File Path="clean.ps1" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="DXDemo1/DXDemo1.csproj" Id="d9b1b87e-5f14-41eb-b347-efda3bf8b779" />
   <Project Path="DXDemo10/DXDemo10.csproj" Id="a00152e8-64df-4103-a17b-ce441d5761ce" />

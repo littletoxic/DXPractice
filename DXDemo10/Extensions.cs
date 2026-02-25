@@ -87,7 +87,7 @@ internal static class Extensions {
         pipelineState = result as T;
     }
 
-    internal static unsafe void CreateCommittedResource<T>(this ID3D12Device @this, in D3D12_HEAP_PROPERTIES pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, in D3D12_RESOURCE_DESC pDesc, D3D12_RESOURCE_STATES InitialResourceState, [Optional] D3D12_CLEAR_VALUE? pOptimizedClearValue, out T resource) where T : class, ID3D12Resource {
+    internal static void CreateCommittedResource<T>(this ID3D12Device @this, in D3D12_HEAP_PROPERTIES pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, in D3D12_RESOURCE_DESC pDesc, D3D12_RESOURCE_STATES InitialResourceState, [Optional] D3D12_CLEAR_VALUE? pOptimizedClearValue, out T resource) where T : class, ID3D12Resource {
         @this.CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState, pOptimizedClearValue, typeof(T).GUID, out object result);
         resource = result as T;
     }

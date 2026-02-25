@@ -361,7 +361,7 @@ internal sealed class DX12Engine {
 
     private ID3D12DescriptorHeap _wboitRTVHeap;  // WBOIT 专用 RTV 堆
 
-    private unsafe void CreateWBOITResources() {
+    private void CreateWBOITResources() {
         // 1. 创建 WBOIT 专用的 RTV 堆 (2 个描述符: 累积 + 透明度)
         var wboitRtvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
             NumDescriptors = 2,

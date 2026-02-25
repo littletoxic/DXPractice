@@ -30,7 +30,7 @@ internal partial struct Scene {
 }
 
 internal unsafe partial struct Mesh {
-    internal readonly unsafe PtrSpan<Bone> Bones => new(mBones, mNumBones);
+    internal readonly PtrSpan<Bone> Bones => new(mBones, mNumBones);
 }
 
 internal unsafe ref struct PtrSpan<T>(T** ptr, uint count) where T : unmanaged {
