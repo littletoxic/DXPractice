@@ -32,7 +32,7 @@ internal partial struct Scene {
 internal partial struct Mesh {
     internal readonly unsafe PtrSpan<Bone> Bones => new(mBones, mNumBones);
 
-    internal unsafe bool HasTextureCoords(uint index) {
+    internal readonly unsafe bool HasTextureCoords(uint index) {
         if (index >= AI_MAX_NUMBER_OF_TEXTURECOORDS) {
             return false;
         }
