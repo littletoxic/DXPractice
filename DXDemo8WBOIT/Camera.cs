@@ -43,13 +43,13 @@ internal sealed class Camera {
     }
 
     internal Camera() {
-        // 注意！我们这里移除了模型矩阵！每个模型会指定具体的模型矩阵！
-        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
-        _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
-
         _eyePosition = new Vector3(4, 5, -4);
         _focusPosition = new Vector3(4, 3, 4);
         _upDirection = new Vector3(0, 1, 0);
+
+        // 注意！我们这里移除了模型矩阵！每个模型会指定具体的模型矩阵！
+        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
+        _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
 
         _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
         _focalLength = Vector3.Distance(_focusPosition, _eyePosition);

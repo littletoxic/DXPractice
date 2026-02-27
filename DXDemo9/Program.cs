@@ -10,6 +10,7 @@
 // scene.bin          储存模型图元，顶点，骨骼动画等二进制数据
 // scene.gltf         JSON 文件，定义 scene 的结构与元素，并储存 bin 和 textures 的链接
 
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using Assimp;
 
@@ -175,32 +176,23 @@ internal sealed class Program {
         Console.WriteLine("开始计算包围盒!\n");
 
         // AABB 包围盒，下一章有大用
-        float minBoundsX, minBoundsY, minBoundsZ;  // 最小坐标点
-        float maxBoundsX, maxBoundsY, maxBoundsZ;  // 最大坐标点
+        Vector3 minBounds, maxBounds;  // 最小坐标点和最大坐标点
 
         // 设置初始值，模型 AABB 包围盒，用于调整摄像机视野，防止模型在摄像机视野外飞出去
-        ref var initialMesh = ref modelScene.Meshes[0];
-        minBoundsX = initialMesh.mAABB.mMin.x;
-        minBoundsY = initialMesh.mAABB.mMin.y;
-        minBoundsZ = initialMesh.mAABB.mMin.z;
-        maxBoundsX = initialMesh.mAABB.mMax.x;
-        maxBoundsY = initialMesh.mAABB.mMax.y;
-        maxBoundsZ = initialMesh.mAABB.mMax.z;
+        minBounds = new(float.MaxValue);
+        maxBounds = new(float.MinValue);
+
 
         // 逐网格遍历，计算整个模型的 AABB 包围盒，请注意导入模型时要指定 GenBoundingBoxes，否则 MAABB 成员会没有数据
         foreach (ref var mesh in modelScene.Meshes) {
 
             // 更新总包围盒
-            minBoundsX = Math.Min(mesh.mAABB.mMin.x, minBoundsX);
-            minBoundsY = Math.Min(mesh.mAABB.mMin.y, minBoundsY);
-            minBoundsZ = Math.Min(mesh.mAABB.mMin.z, minBoundsZ);
+            minBounds = Vector3.Min(mesh.mAABB.mMin, minBounds);
+            maxBounds = Vector3.Min(mesh.mAABB.mMax, maxBounds);
 
-            maxBoundsX = Math.Max(mesh.mAABB.mMax.x, maxBoundsX);
-            maxBoundsY = Math.Max(mesh.mAABB.mMax.y, maxBoundsY);
-            maxBoundsZ = Math.Max(mesh.mAABB.mMax.z, maxBoundsZ);
         }
 
-        Console.WriteLine($"模型包围盒: min({minBoundsX},{minBoundsY},{minBoundsZ}) max({maxBoundsX},{maxBoundsY},{maxBoundsZ})");
+        Console.WriteLine($"模型包围盒: min({minBounds.X},{minBounds.Y},{minBounds.Z}) max({maxBounds.X},{maxBounds.Y},{maxBounds.Z})");
 
         // 释放场景资源
         ReleaseImport(modelScene);

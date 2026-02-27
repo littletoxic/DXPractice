@@ -153,15 +153,15 @@ internal sealed class Camera {
     }
 
     internal Camera() {
+        _eyePosition = new Vector3(4, 5, -4);
+        _focusPosition = new Vector3(4, 3, 4);
+        _upDirection = new Vector3(0, 1, 0);
+
         // 模型矩阵，这里设置绕 x 轴旋转 90°，是因为模型作者使用的建模软件不同，垂直向上的坐标轴有差异
         // 有些是 y 轴朝上建模的，有些是 z 轴朝上建模的 (例如这里是 Z 轴方向朝上，需要绕 x 轴旋转 90° 才行)
         _modelMatrix = Matrix4x4.CreateRotationX(MathF.PI / 2.0f);
         _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
         _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
-
-        _eyePosition = new Vector3(4, 5, -4);
-        _focusPosition = new Vector3(4, 3, 4);
-        _upDirection = new Vector3(0, 1, 0);
 
         _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
         _focalLength = Vector3.Distance(_focusPosition, _eyePosition);
@@ -267,12 +267,8 @@ internal struct Mesh {
 }
 
 internal struct AABB {
-    internal float MinBoundsX;
-    internal float MinBoundsY;
-    internal float MinBoundsZ;
-    internal float MaxBoundsX;
-    internal float MaxBoundsY;
-    internal float MaxBoundsZ;
+    internal Vector3 MinBounds;
+    internal Vector3 MaxBounds;
 }
 
 internal sealed class DX12Engine {
@@ -704,36 +700,18 @@ internal sealed class DX12Engine {
 
         // 初始化包围盒
         _modelBoundingBox = new() {
-            MinBoundsX = float.MaxValue,
-            MinBoundsY = float.MaxValue,
-            MinBoundsZ = float.MaxValue,
-
-            MaxBoundsX = float.MinValue,
-            MaxBoundsY = float.MinValue,
-            MaxBoundsZ = float.MinValue,
+            MinBounds = new(float.MaxValue),
+            MaxBounds = new(float.MinValue),
         };
 
         foreach (ref var mesh in modelScene.Meshes) {
-
-            _modelBoundingBox.MinBoundsX = MathF.Min(_modelBoundingBox.MinBoundsX, mesh.mAABB.mMin.x);
-            _modelBoundingBox.MinBoundsY = MathF.Min(_modelBoundingBox.MinBoundsY, mesh.mAABB.mMin.y);
-            _modelBoundingBox.MinBoundsZ = MathF.Min(_modelBoundingBox.MinBoundsZ, mesh.mAABB.mMin.z);
-
-            _modelBoundingBox.MaxBoundsX = MathF.Max(_modelBoundingBox.MaxBoundsX, mesh.mAABB.mMax.x);
-            _modelBoundingBox.MaxBoundsY = MathF.Max(_modelBoundingBox.MaxBoundsY, mesh.mAABB.mMax.y);
-            _modelBoundingBox.MaxBoundsZ = MathF.Max(_modelBoundingBox.MaxBoundsZ, mesh.mAABB.mMax.z);
+            _modelBoundingBox.MinBounds = Vector3.Min(_modelBoundingBox.MinBounds, mesh.mAABB.mMin);
+            _modelBoundingBox.MaxBounds = Vector3.Max(_modelBoundingBox.MaxBounds, mesh.mAABB.mMax);
         }
 
-        var centerPoint = new Vector3(
-            (_modelBoundingBox.MinBoundsX + _modelBoundingBox.MaxBoundsX) / 2.0f,
-            (_modelBoundingBox.MinBoundsY + _modelBoundingBox.MaxBoundsY) / 2.0f,
-            (_modelBoundingBox.MinBoundsZ + _modelBoundingBox.MaxBoundsZ) / 2.0f);
-
-        var radiusX = (_modelBoundingBox.MaxBoundsX - _modelBoundingBox.MinBoundsX) / 2.0f;
-        var radiusY = (_modelBoundingBox.MaxBoundsY - _modelBoundingBox.MinBoundsY) / 2.0f;
-        var radiusZ = (_modelBoundingBox.MaxBoundsZ - _modelBoundingBox.MinBoundsZ) / 2.0f;
-
-        var radius = MathF.Sqrt(radiusX * radiusX + radiusY * radiusY + radiusZ * radiusZ) / 2.0f;
+        var centerPoint = (_modelBoundingBox.MinBounds + _modelBoundingBox.MaxBounds) / 2.0f;
+        var halfExtents = (_modelBoundingBox.MaxBounds - _modelBoundingBox.MinBounds) / 2.0f;
+        var radius = halfExtents.Length() / 2.0f;
 
         _firstCamera.SetFocusPosition(centerPoint);
         _firstCamera.SetEyePosition(centerPoint with { Z = centerPoint.Z - radius });

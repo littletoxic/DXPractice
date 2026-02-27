@@ -153,14 +153,14 @@ internal sealed class Camera {
     }
 
     internal Camera() {
+        _eyePosition = new Vector3(1, 1, 1);
+        _focusPosition = new Vector3(0, 0, 0);
+        _upDirection = new Vector3(0, 1, 0);
+
         // 模型矩阵，这里需要进行旋转
         _modelMatrix = Matrix4x4.CreateRotationX(MathF.PI / 2f);
         _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
         _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
-
-        _eyePosition = new Vector3(1, 1, 1);
-        _focusPosition = new Vector3(0, 0, 0);
-        _upDirection = new Vector3(0, 1, 0);
 
         _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
         _focalLength = Vector3.Distance(_focusPosition, _eyePosition);
@@ -272,9 +272,13 @@ internal sealed class Material {
     internal D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle;
     internal D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle;
 
-    internal Vector4 DiffuseAlbedoLight;
-    internal Vector4 SpecularLight;
-    internal float Glossiness;
+    internal MaterialCBuffer CBufferData;
+
+    internal struct MaterialCBuffer {
+        internal Vector4 DiffuseAlbedoLight;
+        internal Vector4 SpecularLight;
+        internal float Glossiness;
+    }
 }
 
 internal struct Mesh {
@@ -287,12 +291,8 @@ internal struct Mesh {
 }
 
 internal struct AABB {
-    internal float MinBoundsX;
-    internal float MinBoundsY;
-    internal float MinBoundsZ;
-    internal float MaxBoundsX;
-    internal float MaxBoundsY;
-    internal float MaxBoundsZ;
+    internal Vector3 MinBounds;
+    internal Vector3 MaxBounds;
 }
 
 internal sealed class Light {
@@ -702,19 +702,19 @@ internal sealed class DX12Engine {
             }
 
             if (GetMaterialColor(material, _AI_MATKEY_COLOR_DIFFUSE_BASE, 0, 0, out var diffuseAlbedo) == ReturnCode.SUCCESS) {
-                _materialGroup[^1].DiffuseAlbedoLight = diffuseAlbedo;
+                _materialGroup[^1].CBufferData.DiffuseAlbedoLight = diffuseAlbedo;
             } else {
-                _materialGroup[^1].DiffuseAlbedoLight = new Vector4(1, 1, 1, 1);
+                _materialGroup[^1].CBufferData.DiffuseAlbedoLight = new Vector4(1, 1, 1, 1);
             }
 
             if (GetMaterialColor(material, _AI_MATKEY_COLOR_SPECULAR_BASE, 0, 0, out var specular) == ReturnCode.SUCCESS) {
-                _materialGroup[^1].SpecularLight = specular;
+                _materialGroup[^1].CBufferData.SpecularLight = specular;
             } else {
-                _materialGroup[^1].SpecularLight = new Vector4(1, 1, 1, 1);
+                _materialGroup[^1].CBufferData.SpecularLight = new Vector4(1, 1, 1, 1);
             }
 
             if (GetMaterialFloat(material, _AI_MATKEY_SHININESS_BASE, 0, 0, out var glossiness) == ReturnCode.SUCCESS) {
-                _materialGroup[^1].Glossiness = glossiness;
+                _materialGroup[^1].CBufferData.Glossiness = glossiness;
             }
         }
     }
@@ -805,12 +805,12 @@ internal sealed class DX12Engine {
 
                     _boneNodeTransformGroup.Add(meshToBoneSpaceMatrix);
 
+                    var verticesSpan = CollectionsMarshal.AsSpan(_vertexGroup);
                     foreach (var vertexWeight in currentBone.Weights) {
                         var vertexId = currentMeshVertexGroupOffset + vertexWeight.mVertexId;
                         var weight = vertexWeight.mWeight;
                         var weightsCount = _vertexWeightsCountGroup[(int)vertexId];
 
-                        var verticesSpan = CollectionsMarshal.AsSpan(_vertexGroup);
                         verticesSpan[(int)vertexId].BoneIndices[weightsCount] = finalSkinnedMeshIndex;
                         verticesSpan[(int)vertexId].BoneWeights[weightsCount] = weight;
                         _vertexWeightsCountGroup[(int)vertexId]++;
@@ -820,14 +820,13 @@ internal sealed class DX12Engine {
             } else {
                 var boneIndex = _boneNodeIndexGroup[$"_Mesh_{i}"];
 
+                var verticesSpan = CollectionsMarshal.AsSpan(_vertexGroup);
                 for (int j = 0; j < mesh.mNumVertices; j++) {
                     var vertexId = currentMeshVertexGroupOffset + j;
-                    var weight = 1.0f;
                     var weightsCount = _vertexWeightsCountGroup[vertexId];
 
-                    var verticesSpan = CollectionsMarshal.AsSpan(_vertexGroup);
                     verticesSpan[vertexId].BoneIndices[weightsCount] = boneIndex;
-                    verticesSpan[vertexId].BoneWeights[weightsCount] = weight;
+                    verticesSpan[vertexId].BoneWeights[weightsCount] = 1.0f;
                     _vertexWeightsCountGroup[vertexId]++;
                 }
             }
@@ -861,36 +860,18 @@ internal sealed class DX12Engine {
 
         // 初始化包围盒
         _modelBoundingBox = new() {
-            MinBoundsX = float.MaxValue,
-            MinBoundsY = float.MaxValue,
-            MinBoundsZ = float.MaxValue,
-
-            MaxBoundsX = float.MinValue,
-            MaxBoundsY = float.MinValue,
-            MaxBoundsZ = float.MinValue,
+            MinBounds = new(float.MaxValue),
+            MaxBounds = new(float.MinValue),
         };
 
         foreach (ref var mesh in modelScene.Meshes) {
-
-            _modelBoundingBox.MinBoundsX = MathF.Min(_modelBoundingBox.MinBoundsX, mesh.mAABB.mMin.x);
-            _modelBoundingBox.MinBoundsY = MathF.Min(_modelBoundingBox.MinBoundsY, mesh.mAABB.mMin.y);
-            _modelBoundingBox.MinBoundsZ = MathF.Min(_modelBoundingBox.MinBoundsZ, mesh.mAABB.mMin.z);
-
-            _modelBoundingBox.MaxBoundsX = MathF.Max(_modelBoundingBox.MaxBoundsX, mesh.mAABB.mMax.x);
-            _modelBoundingBox.MaxBoundsY = MathF.Max(_modelBoundingBox.MaxBoundsY, mesh.mAABB.mMax.y);
-            _modelBoundingBox.MaxBoundsZ = MathF.Max(_modelBoundingBox.MaxBoundsZ, mesh.mAABB.mMax.z);
+            _modelBoundingBox.MinBounds = Vector3.Min(_modelBoundingBox.MinBounds, mesh.mAABB.mMin);
+            _modelBoundingBox.MaxBounds = Vector3.Max(_modelBoundingBox.MaxBounds, mesh.mAABB.mMax);
         }
 
-        var centerPoint = new Vector3(
-            (_modelBoundingBox.MinBoundsX + _modelBoundingBox.MaxBoundsX) / 2.0f,
-            (_modelBoundingBox.MinBoundsY + _modelBoundingBox.MaxBoundsY) / 2.0f,
-            (_modelBoundingBox.MinBoundsZ + _modelBoundingBox.MaxBoundsZ) / 2.0f);
-
-        var radiusX = (_modelBoundingBox.MaxBoundsX - _modelBoundingBox.MinBoundsX) / 2.0f;
-        var radiusY = (_modelBoundingBox.MaxBoundsY - _modelBoundingBox.MinBoundsY) / 2.0f;
-        var radiusZ = (_modelBoundingBox.MaxBoundsZ - _modelBoundingBox.MinBoundsZ) / 2.0f;
-
-        var radius = MathF.Sqrt(radiusX * radiusX + radiusY * radiusY + radiusZ * radiusZ) / 2.0f;
+        var centerPoint = (_modelBoundingBox.MinBounds + _modelBoundingBox.MaxBounds) / 2.0f;
+        var halfExtents = (_modelBoundingBox.MaxBounds - _modelBoundingBox.MinBounds) / 2.0f;
+        var radius = halfExtents.Length() / 2.0f;
 
         _firstCamera.SetFocusPosition(centerPoint);
         _firstCamera.SetEyePosition(centerPoint with { Z = centerPoint.Z - radius });
@@ -1715,7 +1696,8 @@ internal sealed class DX12Engine {
         _commandList.IASetIndexBuffer(_indexBufferView);
 
         foreach (var mesh in _meshGroup) {
-            _commandList.SetGraphicsRoot32BitConstants(2, [_materialGroup[mesh.MaterialIndex].DiffuseAlbedoLight], 0);
+            // 与教程不同 这里将三个字段提取成一个连续的 struct
+            _commandList.SetGraphicsRoot32BitConstants(2, [_materialGroup[mesh.MaterialIndex].CBufferData], 0);
             _commandList.SetGraphicsRootDescriptorTable(3, _materialGroup[mesh.MaterialIndex].GPUHandle);
             _commandList.DrawIndexedInstanced(mesh.IndexCount, 1, mesh.IndexGroupOffset, mesh.VertexGroupOffset, 0);
         }

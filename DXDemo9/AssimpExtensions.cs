@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -43,4 +44,8 @@ internal unsafe ref struct PtrSpanEnumerator<T>(T** ptr, uint count) where T : u
     private int _index = -1;
     public readonly ref T Current => ref *ptr[_index];
     public bool MoveNext() => ++_index < (int)count;
+}
+
+internal partial struct AssimpVector3D {
+    public static implicit operator Vector3(AssimpVector3D v) => Unsafe.As<AssimpVector3D, Vector3>(ref v);
 }
