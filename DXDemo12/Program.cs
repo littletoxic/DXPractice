@@ -1185,6 +1185,18 @@ internal sealed class DX12Engine {
         var currentGPUHandle = _srvHeap.GetGPUDescriptorHandleForHeapStart();
         var srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+
+        // 纹理从 Upload 堆复制到 Default 堆后，需要从 COPY_DEST 转换到 PIXEL_SHADER_RESOURCE 才能在 PS 阶段使用
+        var barrier = new D3D12_RESOURCE_BARRIER {
+            Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            Anonymous = new() {
+                Transition = new() {
+                    StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                    StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+                }
+            }
+        };
+
         StartCommandRecord();
 
         for (var i = 0; i < _materialGroup.Count; i++) {
@@ -1199,13 +1211,7 @@ internal sealed class DX12Engine {
 
             CreateSRV(i, currentCPUHandle, currentGPUHandle);
 
-            // 纹理从 Upload 堆复制到 Default 堆后，需要从 COPY_DEST 转换到 PIXEL_SHADER_RESOURCE 才能在 PS 阶段使用
-            var barrier = new D3D12_RESOURCE_BARRIER {
-                Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION
-            };
             barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
-            barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-            barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             _commandList.ResourceBarrier([barrier]);
 
             currentCPUHandle.ptr += srvDescriptorSize;
