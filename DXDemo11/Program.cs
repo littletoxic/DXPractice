@@ -337,7 +337,7 @@ internal sealed class DX12Engine {
     // DXGI_FORMAT_D16_UNORM			(每个像素占用两个字节 16 位，16 位无符号归一化浮点数留作深度值，范围 [0,1]，不使用模板)
     // DXGI_FORMAT_D32_FLOAT			(每个像素占用四个字节 32 位，32 位浮点数留作深度值，不使用模板)
     // 这里我们选择最常用的格式 DXGI_FORMAT_D24_UNORM_S8_UINT
-    private readonly DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    private const DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
 
     private const string ModelFileName = "kurumi/scene.gltf";

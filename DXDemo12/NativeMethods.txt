@@ -93,3 +93,5 @@ AI_MAX_NUMBER_OF_COLOR_SETS
 // DXDemo12
 GetMaterialColor
 GetMaterialFloatArray
+
+ID3D12Debug3

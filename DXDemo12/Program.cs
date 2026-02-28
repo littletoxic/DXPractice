@@ -356,7 +356,7 @@ internal sealed class DX12Engine {
     // DXGI_FORMAT_D16_UNORM			(每个像素占用两个字节 16 位，16 位无符号归一化浮点数留作深度值，范围 [0,1]，不使用模板)
     // DXGI_FORMAT_D32_FLOAT			(每个像素占用四个字节 32 位，32 位浮点数留作深度值，不使用模板)
     // 这里我们选择最常用的格式 DXGI_FORMAT_D24_UNORM_S8_UINT
-    private readonly DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    private const DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
 
     private const string ModelFileName = "sakiko/scene.gltf";
@@ -498,6 +498,9 @@ internal sealed class DX12Engine {
 
         D3D12GetDebugInterface(out _d3d12DebugDevice).ThrowOnFailure();
         _d3d12DebugDevice.EnableDebugLayer();
+
+        var debug3 = _d3d12DebugDevice as ID3D12Debug3;
+        debug3.SetEnableGPUBasedValidation(true);
 
         _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
     }
@@ -1175,7 +1178,7 @@ internal sealed class DX12Engine {
         _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
-    private void STEP14_CreateModelTextureResource() {
+    private unsafe void STEP14_CreateModelTextureResource() {
         CreateSRVHeap();
 
         var currentCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
@@ -1195,6 +1198,15 @@ internal sealed class DX12Engine {
             }
 
             CreateSRV(i, currentCPUHandle, currentGPUHandle);
+
+            // 纹理从 Upload 堆复制到 Default 堆后，需要从 COPY_DEST 转换到 PIXEL_SHADER_RESOURCE 才能在 PS 阶段使用
+            var barrier = new D3D12_RESOURCE_BARRIER {
+                Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION
+            };
+            barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
+            barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+            barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            _commandList.ResourceBarrier([barrier]);
 
             currentCPUHandle.ptr += srvDescriptorSize;
             currentGPUHandle.ptr += srvDescriptorSize;

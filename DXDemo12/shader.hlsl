@@ -12,9 +12,10 @@ struct VSInput      // VS 阶段输入顶点数据
 
 struct VSOutput     // VS 阶段输出顶点数据
 {
-    float4 position : SV_Position; // 输出顶点的位置
-    float4 normal : NORMAL; // 顶底法线，用于光照
-    float2 texcoordUV : TEXCOORD; // 输出顶点纹理坐标时
+    float4 position : SV_Position; // 输出顶点的位置 (经过 MVP 变换后的齐次裁剪空间坐标，PS 阶段会被硬件自动转换为屏幕空间坐标)
+    float4 worldPosition : TEXCOORD1; // 顶点在世界空间的位置，用于 PS 阶段的光照计算
+    float4 normal : NORMAL; // 顶点法线，用于光照
+    float2 texcoordUV : TEXCOORD; // 输出顶点纹理坐标
     float4 color : COLOR; // 对于自发光纹理，可能带有的颜色
 };
 
@@ -56,6 +57,7 @@ VSOutput VSMain(VSInput input)
 	
 	
     output.position = mul(input.position, BoneMatrix); // 与骨骼权重矩阵相乘，得到静止状态下的真实位置
+    output.worldPosition = mul(output.position, WorldMatrix); // 保存世界空间位置，给 PS 阶段光照计算用
     output.position = mul(output.position, MVP); // 注意这里！顶点坐标还需要经过一次 MVP 变换！
 	
 	// 法线变换的公式是 N' = N * Inv(Transpose(Matrix)) 与原变换矩阵的逆转置矩阵相乘，此公式网上有推导过程
@@ -129,8 +131,8 @@ float4 PSMain(VSOutput input) : SV_Target
 	
 	
 	// 3. Specular 高光，模拟真实环境下，有光泽的物体经光线反射后上面出现的亮点
-	// 摄像机对当前像素的观察向量
-    float3 ViewDirection = normalize(CameraPosition.xyz - input.position.xyz);
+	// 摄像机对当前像素的观察向量 (注意要用世界空间位置，不能用 SV_Position，因为 SV_Position 在 PS 阶段已被硬件转换成屏幕空间坐标)
+    float3 ViewDirection = normalize(CameraPosition.xyz - input.worldPosition.xyz);
 	// 半程向量，传统 Phong 模型虽然得到了高光，但这个高光总是偏向于某个方向，而不是真实环境下一片区域下的高亮
 	// 原因是传统 Phong 模型只考虑了视线与反射光线的夹角，当夹角大于 90° 时，高光为 0，在镜面高光区域的边缘出现了明显的断层
 	// 1977 年 Blinn 引入了半程向量来改进这一点，半程向量是光线与视线方向向量相加的一个单位向量

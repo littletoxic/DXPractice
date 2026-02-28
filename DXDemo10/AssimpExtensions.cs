@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -74,4 +75,8 @@ internal static class Extensions {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static unsafe ref T AsRef<T>(nint source) where T : allows ref struct => ref Unsafe.AsRef<T>((void*)source);
     }
+}
+
+internal partial struct AssimpVector3D {
+    public static implicit operator Vector3(AssimpVector3D v) => Unsafe.As<AssimpVector3D, Vector3>(ref v);
 }
