@@ -1421,7 +1421,7 @@ internal sealed class DX12Engine {
             ShaderRegister = 0,
             RegisterSpace = 0,
             ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
-            Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+            Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
             AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
@@ -1644,7 +1644,7 @@ internal sealed class DX12Engine {
 
             int nextIndex = 0;
 
-            for (int i = 0; i < animeNode.mNumPositionKeys; i++) {
+            for (int i = 1; i < animeNode.mNumPositionKeys; i++) {
                 if (animeTimeInTicks < animeNode.PositionKeys[i].mTime) {
                     nextIndex = i;
                     break;
@@ -1666,7 +1666,7 @@ internal sealed class DX12Engine {
 
             int nextIndex = 0;
 
-            for (int i = 0; i < animeNode.mNumRotationKeys; i++) {
+            for (int i = 1; i < animeNode.mNumRotationKeys; i++) {
                 if (animeTimeInTicks < animeNode.RotationKeys[i].mTime) {
                     nextIndex = i;
                     break;
@@ -1691,7 +1691,7 @@ internal sealed class DX12Engine {
 
             int nextIndex = 0;
 
-            for (int i = 0; i < animeNode.mNumScalingKeys; i++) {
+            for (int i = 1; i < animeNode.mNumScalingKeys; i++) {
                 if (animeTimeInTicks < animeNode.ScalingKeys[i].mTime) {
                     nextIndex = i;
                     break;
@@ -1913,7 +1913,7 @@ internal sealed class DX12Engine {
                         ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
                         if (modelScene.HasAnimations()) {
                             _animationIndex++;
-                            _animationIndex %= (_animationCount + 1);
+                            _animationIndex %= _animationCount + 1;
                             BeginAnimationRender();
 
                         }
