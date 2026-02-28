@@ -1,7 +1,7 @@
-﻿// https://blog.csdn.net/DGAF2198588973/article/details/155771199
+﻿// https://blog.csdn.net/DGAF2198588973/article/details/157096831
 
-// 鸣谢原作者大大: close2animation (https://sketchfab.com/close2animation)
-// 模型项目地址: https://sketchfab.com/3d-models/kurumi-model-f776c64883414c71b9441b8c45342533
+// 鸣谢原作者大大: reizibarrientos (https://sketchfab.com/reizibarrientos)
+// 模型项目地址: https://sketchfab.com/3d-models/purpleheartanime-7e744a429b9d4041bc43aae7939a4250
 
 using System.Buffers;
 using System.Collections.Frozen;
@@ -22,7 +22,7 @@ using Windows.Win32.System.Com;
 using Windows.Win32.System.SystemServices;
 using Windows.Win32.UI.WindowsAndMessaging;
 
-namespace DXDemo11;
+namespace DXDemo13;
 
 internal static class DX12TextureHelper {
 
@@ -239,6 +239,7 @@ internal sealed class Camera {
         _focalLength = Vector3.Distance(_focusPosition, _eyePosition);
         _rightDirection = Vector3.Normalize(Vector3.Cross(_viewDirection, _upDirection));
     }
+
 }
 
 [InlineArray(4)]
@@ -267,6 +268,14 @@ internal sealed class Material {
 
     internal D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle;
     internal D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle;
+
+    internal MaterialCBuffer CBufferData;
+
+    internal struct MaterialCBuffer {
+        internal Vector4 DiffuseAlbedoLight;
+        internal Vector4 SpecularLight;
+        internal float Glossiness;
+    }
 }
 
 internal struct Mesh {
@@ -278,15 +287,16 @@ internal struct Mesh {
     internal uint IndexCount;
 }
 
-internal struct AABB {
-    internal Vector3 MinBounds;
-    internal Vector3 MaxBounds;
-}
+//internal struct AABB {
+//    internal Vector3 MinBounds;
+//    internal Vector3 MaxBounds;
+//}
 
 internal sealed class DX12Engine {
 
     private const int FrameCount = 3;
     private static readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
+    private static readonly float[] Black = [0f, 0f, 0f, 1f];
 
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
@@ -340,8 +350,8 @@ internal sealed class DX12Engine {
     private const DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
 
-    private const string ModelFileName = "kurumi/scene.gltf";
-    private const string ModelTextureFilePath = "kurumi/";
+    private const string ModelFileName = "purpleheartanime/scene.gltf";
+    private const string ModelTextureFilePath = "purpleheartanime/";
     private nint _modelScene;
 
     // 导入模型使用的标志
@@ -366,7 +376,7 @@ internal sealed class DX12Engine {
 
     private readonly List<Mesh> _meshGroup = [];
 
-    private AABB _modelBoundingBox;
+    //private AABB _modelBoundingBox;
 
     private ID3D12DescriptorHeap _srvHeap;
 
@@ -393,6 +403,7 @@ internal sealed class DX12Engine {
     private D3D12_VERTEX_BUFFER_VIEW _vertexBufferView;
     private D3D12_INDEX_BUFFER_VIEW _indexBufferView;
 
+    private readonly Camera _firstCamera = new();
     private struct CBuffer {
         internal Matrix4x4 MVPMatrix;
         internal Buffer512<Matrix4x4> BoneTransformMatrix;
@@ -410,8 +421,6 @@ internal sealed class DX12Engine {
 
     private ID3D12PipelineState _pipelineStateObject;
 
-    private readonly Camera _firstCamera = new();
-
     private D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
         TopLeftY = 0,
@@ -426,6 +435,19 @@ internal sealed class DX12Engine {
         right = WindowWidth,
         bottom = WindowHeight
     };
+
+
+    private int _animationCount;
+    private int _animationIndex;
+    private double _animeTPS;
+    private double _animeDuration;
+    private double _animeTime;
+    private long _recordedTime;
+    private long _currentTime;
+
+    private readonly List<Matrix4x4> _boneNodeAnimationTransformGroup = [];
+
+    private readonly Dictionary<string, Matrix4x4> _animeNodeSQTMatrixGroup = [];
 
     private unsafe void STEP1_InitWindow(SafeHandle hInstance) {
         const string className = "DX12 Game";
@@ -467,6 +489,9 @@ internal sealed class DX12Engine {
 
         D3D12GetDebugInterface(out _d3d12DebugDevice).ThrowOnFailure();
         _d3d12DebugDevice.EnableDebugLayer();
+
+        var debug3 = _d3d12DebugDevice as ID3D12Debug3;
+        debug3.SetEnableGPUBasedValidation(true);
 
         _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
     }
@@ -669,6 +694,22 @@ internal sealed class DX12Engine {
                 };
                 _materialGroup.Add(mt);
             }
+
+            if (GetMaterialColor(material, _AI_MATKEY_COLOR_DIFFUSE_BASE, 0, 0, out var diffuseAlbedo) == ReturnCode.SUCCESS) {
+                _materialGroup[^1].CBufferData.DiffuseAlbedoLight = diffuseAlbedo;
+            } else {
+                _materialGroup[^1].CBufferData.DiffuseAlbedoLight = new Vector4(1, 1, 1, 1);
+            }
+
+            if (GetMaterialColor(material, _AI_MATKEY_COLOR_SPECULAR_BASE, 0, 0, out var specular) == ReturnCode.SUCCESS) {
+                _materialGroup[^1].CBufferData.SpecularLight = specular;
+            } else {
+                _materialGroup[^1].CBufferData.SpecularLight = new Vector4(1, 1, 1, 1);
+            }
+
+            if (GetMaterialFloat(material, _AI_MATKEY_SHININESS_BASE, 0, 0, out var glossiness) == ReturnCode.SUCCESS) {
+                _materialGroup[^1].CBufferData.Glossiness = glossiness;
+            }
         }
     }
 
@@ -698,6 +739,8 @@ internal sealed class DX12Engine {
     private void STEP12_AddModelData() {
         ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
+        _animationCount = (int)modelScene.mNumAnimations;
+
         var modelMatrix = Matrix4x4.Identity;
 
         CalcModelNodeMatrix(modelScene.RootNode, modelMatrix);
@@ -713,7 +756,7 @@ internal sealed class DX12Engine {
 
             for (int j = 0; j < mesh.mNumVertices; j++) {
                 var newVertex = new Vertex {
-                    Position = new(mesh.Vertices[j], 1.0f)
+                    Position = new(mesh.Vertices[j], 1.0f),
                 };
 
                 // 新节点纹理 UV，如果有就添加，没有就默认 (-1, -1)
@@ -808,25 +851,33 @@ internal sealed class DX12Engine {
     }
 
     private void STEP13_CalcModelBoundingBox() {
-        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+        //ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
-        // 初始化包围盒
-        _modelBoundingBox = new() {
-            MinBounds = new(float.MaxValue),
-            MaxBounds = new(float.MinValue),
-        };
+        //// 初始化包围盒
+        //_modelBoundingBox = new() {
+        //    MinBounds = new(float.MaxValue),
+        //    MaxBounds = new(float.MinValue),
+        //};
 
-        foreach (ref var mesh in modelScene.Meshes) {
-            _modelBoundingBox.MinBounds = Vector3.Min(_modelBoundingBox.MinBounds, mesh.mAABB.mMin);
-            _modelBoundingBox.MaxBounds = Vector3.Max(_modelBoundingBox.MaxBounds, mesh.mAABB.mMax);
-        }
+        //foreach (ref var mesh in modelScene.Meshes) {
+        //    _modelBoundingBox.MinBounds = Vector3.Min(_modelBoundingBox.MinBounds, mesh.mAABB.mMin);
+        //    _modelBoundingBox.MaxBounds = Vector3.Max(_modelBoundingBox.MaxBounds, mesh.mAABB.mMax);
+        //}
 
-        var centerPoint = (_modelBoundingBox.MinBounds + _modelBoundingBox.MaxBounds) / 2.0f;
-        var halfExtents = (_modelBoundingBox.MaxBounds - _modelBoundingBox.MinBounds) / 2.0f;
-        var radius = halfExtents.Length() / 2.0f;
+        //var centerPoint = (_modelBoundingBox.MinBounds + _modelBoundingBox.MaxBounds) / 2.0f;
+        //var halfExtents = (_modelBoundingBox.MaxBounds - _modelBoundingBox.MinBounds) / 2.0f;
+        //var radius = halfExtents.Length() / 2.0f;
 
-        _firstCamera.SetFocusPosition(centerPoint);
-        _firstCamera.SetEyePosition(centerPoint with { Z = centerPoint.Z - radius });
+        //_firstCamera.SetFocusPosition(centerPoint);
+        //_firstCamera.SetEyePosition(centerPoint with { Z = centerPoint.Z - radius });
+
+        // 加载这个模型不知道为什么 AABB 盒这么大，导致摄像机飞好远，索性不用了
+
+        // 设置摄像机焦点
+        _firstCamera.SetFocusPosition(new(0, 0, 0));
+
+        // 设置摄像机位置
+        _firstCamera.SetEyePosition(new(2, 3, -3));
     }
 
     private void CreateSRVHeap() {
@@ -1127,12 +1178,24 @@ internal sealed class DX12Engine {
         _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
-    private void STEP14_CreateModelTextureResource() {
+    private unsafe void STEP14_CreateModelTextureResource() {
         CreateSRVHeap();
 
         var currentCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
         var currentGPUHandle = _srvHeap.GetGPUDescriptorHandleForHeapStart();
         var srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+
+        // 纹理从 Upload 堆复制到 Default 堆后，需要从 COPY_DEST 转换到 PIXEL_SHADER_RESOURCE 才能在 PS 阶段使用
+        var barrier = new D3D12_RESOURCE_BARRIER {
+            Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            Anonymous = new() {
+                Transition = new() {
+                    StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                    StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+                }
+            }
+        };
 
         StartCommandRecord();
 
@@ -1147,6 +1210,9 @@ internal sealed class DX12Engine {
             }
 
             CreateSRV(i, currentCPUHandle, currentGPUHandle);
+
+            barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
+            _commandList.ResourceBarrier([barrier]);
 
             currentCPUHandle.ptr += srvDescriptorSize;
             currentGPUHandle.ptr += srvDescriptorSize;
@@ -1276,12 +1342,12 @@ internal sealed class DX12Engine {
     }
 
     private unsafe void STEP18_CreateCBVResource() {
-        uint cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        uint cBufferWidth = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
             Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            Width = cBufferSize,
+            Width = cBufferWidth,
             Height = 1,
             Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
@@ -1301,9 +1367,18 @@ internal sealed class DX12Engine {
 
         _cbvResource.Map(0, null, out var cbvPointer);
         mvpBuffer = (nint)cbvPointer;
+
     }
 
     private unsafe void STEP19_CreateRootSignature() {
+
+        // 根参数 + 静态采样器列表
+        // Para 0: (Type = Root Descriptor,  2 DWORD)  (b0, space0) CBV 根描述符，用于 MVP 与骨骼矩阵
+        // Para 1: (Type = Descriptor Table, 1 DWORD)  (t0, space0) SRV 描述符表，用于模型纹理或天空盒
+        // 
+        // Sampler 0: (Type = Static Sampler) (s0, space0) 静态采样器 (邻近点过滤)，用于模型纹理采样
+
+
         var rootParameters = stackalloc D3D12_ROOT_PARAMETER[2];
 
         // 把更新频率高的根参数放前面，低的放后面，可以优化性能 (微软官方文档建议)
@@ -1319,6 +1394,7 @@ internal sealed class DX12Engine {
             ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
             Anonymous = new() { Descriptor = cbvRootDescriptorDesc },
         };
+
 
 
         var srvDescriptorDesc = new D3D12_DESCRIPTOR_RANGE() {
@@ -1530,10 +1606,191 @@ internal sealed class DX12Engine {
         _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObject);
     }
 
+    private void BeginAnimationRender() {
+        if (_animationIndex != 0) {
+            ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+
+            _recordedTime = _currentTime = Environment.TickCount64;
+
+            _animeTPS = modelScene.Animations[_animationIndex - 1].mTicksPerSecond;
+            _animeTPS = _animeTPS == 0 ? 30.0 : _animeTPS;
+
+            // 更新持续时间，注意 Assimp 的 mDuration 指的是该动画一共有多少动画帧，不是持续多少秒
+            // AnimeDuration (Seconds) = mDuration (Ticks) / TPS
+            _animeDuration = modelScene.Animations[_animationIndex - 1].mDuration / _animeTPS;
+
+            _animeTime = 0;
+
+
+            CollectionsMarshal.SetCount(_boneNodeAnimationTransformGroup, _boneNodeTransformGroup.Count);
+            CollectionsMarshal.AsSpan(_boneNodeAnimationTransformGroup).Fill(Matrix4x4.Identity);
+
+            _animeNodeSQTMatrixGroup.Clear();
+
+            SetWindowText(_hwnd, $"绀紫之心 -- 动画({_animationIndex}): {modelScene.Animations[_animationIndex - 1].mName}");
+        } else {
+            SetWindowText(_hwnd, "绀紫之心 -- Static Pose 静态姿态");
+        }
+    }
+
+    private Matrix4x4 CalcTickBoneMatrix(double animeTimeInTicks, in NodeAnim animeNode) {
+        Matrix4x4 boneAnimeTranslationMatrix;
+        Matrix4x4 boneAnimeRotationMatrix;
+        Matrix4x4 boneAnimeScalingMatrix;
+
+        if (animeNode.mNumPositionKeys == 1) {
+            boneAnimeTranslationMatrix = Matrix4x4.CreateTranslation(animeNode.PositionKeys[0].mValue);
+        } else {
+
+            int nextIndex = 0;
+
+            for (int i = 0; i < animeNode.mNumPositionKeys; i++) {
+                if (animeTimeInTicks < animeNode.PositionKeys[i].mTime) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+            Vector3 lastTickVec = animeNode.PositionKeys[nextIndex - 1].mValue;
+            Vector3 nextTickVec = animeNode.PositionKeys[nextIndex].mValue;
+
+            double deltaTime = animeNode.PositionKeys[nextIndex].mTime - animeNode.PositionKeys[nextIndex - 1].mTime;
+            double differ = animeTimeInTicks - animeNode.PositionKeys[nextIndex - 1].mTime;
+            double factor = differ / deltaTime;
+
+            boneAnimeTranslationMatrix = Matrix4x4.CreateTranslation(Vector3.Lerp(lastTickVec, nextTickVec, (float)factor));
+        }
+
+        if (animeNode.mNumRotationKeys == 1) {
+            boneAnimeRotationMatrix = Matrix4x4.CreateFromQuaternion(animeNode.RotationKeys[0].mValue);
+        } else {
+
+            int nextIndex = 0;
+
+            for (int i = 0; i < animeNode.mNumRotationKeys; i++) {
+                if (animeTimeInTicks < animeNode.RotationKeys[i].mTime) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+
+            Quaternion lastTickQuat = animeNode.RotationKeys[nextIndex - 1].mValue;
+            Quaternion nextTickQuat = animeNode.RotationKeys[nextIndex].mValue;
+
+            double deltaTime = animeNode.RotationKeys[nextIndex].mTime - animeNode.RotationKeys[nextIndex - 1].mTime;
+            double differ = animeTimeInTicks - animeNode.RotationKeys[nextIndex - 1].mTime;
+            double factor = differ / deltaTime;
+
+            var rotationQuaternion = Quaternion.Slerp(lastTickQuat, nextTickQuat, (float)factor);
+            boneAnimeRotationMatrix = Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(rotationQuaternion));
+        }
+
+
+        if (animeNode.mNumScalingKeys == 1) {
+            boneAnimeScalingMatrix = Matrix4x4.CreateScale(animeNode.ScalingKeys[0].mValue);
+        } else {
+
+            int nextIndex = 0;
+
+            for (int i = 0; i < animeNode.mNumScalingKeys; i++) {
+                if (animeTimeInTicks < animeNode.ScalingKeys[i].mTime) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+
+            Vector3 lastTickVec = animeNode.ScalingKeys[nextIndex - 1].mValue;
+            Vector3 nextTickVec = animeNode.ScalingKeys[nextIndex].mValue;
+
+            double deltaTime = animeNode.ScalingKeys[nextIndex].mTime - animeNode.ScalingKeys[nextIndex - 1].mTime;
+            double differ = animeTimeInTicks - animeNode.ScalingKeys[nextIndex - 1].mTime;
+            double factor = differ / deltaTime;
+
+            boneAnimeScalingMatrix = Matrix4x4.CreateScale(Vector3.Lerp(lastTickVec, nextTickVec, (float)factor));
+        }
+
+
+        // 将上述三个矩阵依次相乘，就能得到最终变换矩阵 (SQT 矩阵) 了，注意，顺序 (放缩 -> 旋转 -> 平移) 不能改变！
+        return boneAnimeScalingMatrix * boneAnimeRotationMatrix * boneAnimeTranslationMatrix;
+    }
+
+    private void UpdateAnimeNodeMatrix() {
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+
+        double animeTimeInTicks = _animeTime * _animeTPS;
+        foreach (ref var animeNode in modelScene.Animations[_animationIndex - 1].Channels) {
+            var boneName = animeNode.mNodeName.ToString();
+            _animeNodeSQTMatrixGroup[boneName] = CalcTickBoneMatrix(animeTimeInTicks, animeNode);
+        }
+    }
+
+    private void CalcAnimeModelNodeMatrix(in Node node, in Matrix4x4 parentNodeTransform) {
+
+        Matrix4x4 currentNodeTransform = node.mTransformation;
+
+        var boneName = node.mName.ToString();
+
+        if (_animeNodeSQTMatrixGroup.TryGetValue(boneName, out var nodeTransform)) {
+            currentNodeTransform = Matrix4x4.Transpose(nodeTransform);
+        }
+
+        var boneIndex = _boneNodeIndexGroup[boneName];
+
+        currentNodeTransform = parentNodeTransform * currentNodeTransform;
+        _boneNodeAnimationTransformGroup[boneIndex] = currentNodeTransform;
+
+        foreach (ref var childNode in node.Children) {
+            CalcAnimeModelNodeMatrix(childNode, currentNodeTransform);
+        }
+    }
+
+    private void TransformMeshToBoneFinalMatrix() {
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+        for (int i = 0; i < modelScene.mNumMeshes; i++) {
+            ref var mesh = ref modelScene.Meshes[i];
+
+            foreach (ref var currentBone in mesh.Bones) {
+
+                var boneIndex = _boneNodeIndexGroup[currentBone.mName.ToString()];
+                Matrix4x4 meshToBoneSpaceMatrix = currentBone.mOffsetMatrix;
+
+                var finalSkinnedMeshIndex = _boneNodeIndexGroup[$"_Mesh_{i}_To_Bone_{boneIndex}"];
+
+                _boneNodeAnimationTransformGroup[finalSkinnedMeshIndex] = _boneNodeAnimationTransformGroup[boneIndex] * meshToBoneSpaceMatrix;
+            }
+        }
+    }
+
     private void UpdateConstantBuffer() {
         ref var buffer = ref Unsafe.AsRef<CBuffer>(mvpBuffer);
         buffer.MVPMatrix = _firstCamera.MVPMatrix;
-        CollectionsMarshal.AsSpan(_boneNodeTransformGroup).CopyTo(buffer.BoneTransformMatrix);
+
+        if (_animationIndex == 0) {
+            CollectionsMarshal.AsSpan(_boneNodeTransformGroup).CopyTo(buffer.BoneTransformMatrix);
+        } else {
+            ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+
+            _currentTime = Environment.TickCount64;
+
+            _animeTime += (_currentTime - _recordedTime) / 1000.0;
+            _animeTime %= _animeDuration;
+
+            _recordedTime = _currentTime;
+
+            UpdateAnimeNodeMatrix();
+
+            CalcAnimeModelNodeMatrix(modelScene.RootNode, Matrix4x4.Identity);
+
+            TransformMeshToBoneFinalMatrix();
+
+            var boneNodeTransformGroupSpan = CollectionsMarshal.AsSpan(_boneNodeAnimationTransformGroup);
+            for (var i = 0; i < boneNodeTransformGroupSpan.Length; i++) {
+                boneNodeTransformGroupSpan[i] = Matrix4x4.Transpose(boneNodeTransformGroupSpan[i]);
+            }
+
+            boneNodeTransformGroupSpan.CopyTo(buffer.BoneTransformMatrix);
+        }
+
+
     }
 
     private unsafe void Render() {
@@ -1650,6 +1907,16 @@ internal sealed class DX12Engine {
                     case 'd':
                     case 'D':
                         _firstCamera.Strafe(-0.2f);
+                        break;
+
+                    case ' ':
+                        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+                        if (modelScene.HasAnimations()) {
+                            _animationIndex++;
+                            _animationIndex %= (_animationCount + 1);
+                            BeginAnimationRender();
+
+                        }
                         break;
                 }
                 break;

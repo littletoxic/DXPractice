@@ -722,7 +722,7 @@ internal sealed class DX12Engine {
         }
     }
 
-    private void CalcModelNodeMatrix(ref Node node, Matrix4x4 parentNodeTransform) {
+    private void CalcModelNodeMatrix(in Node node, in Matrix4x4 parentNodeTransform) {
 
         var currentTransformMatrix = (Matrix4x4)node.mTransformation;
 
@@ -741,7 +741,7 @@ internal sealed class DX12Engine {
         }
 
         foreach (ref var childNode in node.Children) {
-            CalcModelNodeMatrix(ref childNode, currentTransformMatrix);
+            CalcModelNodeMatrix(childNode, currentTransformMatrix);
         }
     }
 
@@ -750,7 +750,7 @@ internal sealed class DX12Engine {
 
         var modelMatrix = Matrix4x4.Identity;
 
-        CalcModelNodeMatrix(ref modelScene.RootNode, modelMatrix);
+        CalcModelNodeMatrix(modelScene.RootNode, modelMatrix);
 
         int currentMeshVertexGroupOffset = 0;
         uint currentMeshIndexGroupOffset = 0;
