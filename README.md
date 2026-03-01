@@ -4,7 +4,7 @@
 
 调试层打开可能也不会有输出，因为默认只会调试托管代码
 
-右键你要打开调试的项目，选择调试，点击打开调试启动配置文件 UI
+右键你要打开调试的项目打开属性，选择调试，点击打开调试启动配置文件 UI
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/9652727b-8c05-4ee7-905d-ebd13d773e77" />
 
 启用本机代码调试即可
