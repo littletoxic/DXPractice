@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -7,6 +8,7 @@ namespace Assimp;
 
 internal static partial class PInvoke {
     internal const string _AI_MATKEY_NAME_BASE = "?mat.name";
+    internal const string _AI_MATKEY_COLOR_EMISSIVE_BASE = "$clr.emissive";
 
     internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) {
         return ref *ImportFile(pFile, pFlags);
@@ -79,13 +81,24 @@ internal partial struct Bone {
 internal unsafe ref struct PtrSpan<T>(T** ptr, uint count) where T : unmanaged {
     public readonly int Length => (int)count;
     public readonly ref T this[int index] => ref *ptr[index];
-    public readonly PtrSpanEnumerator<T> GetEnumerator() => new(ptr, count);
-}
+    public readonly PtrSpanEnumerator GetEnumerator() => new(this);
 
-internal unsafe ref struct PtrSpanEnumerator<T>(T** ptr, uint count) where T : unmanaged {
-    private int _index = -1;
-    public readonly ref T Current => ref *ptr[_index];
-    public bool MoveNext() => ++_index < (int)count;
+
+    internal ref struct PtrSpanEnumerator(PtrSpan<T> ptrSpan) : IEnumerator<T> {
+        private readonly PtrSpan<T> _ptrSpan = ptrSpan;
+        private int _index = -1;
+
+        public bool MoveNext() => ++_index < _ptrSpan.Length;
+
+        public readonly ref T Current => ref _ptrSpan[_index];
+
+        readonly T IEnumerator<T>.Current => Current;
+        readonly object IEnumerator.Current => Current;
+
+        public readonly void Dispose() { }
+        public void Reset() => _index = -1;
+    }
+
 }
 
 internal partial struct P__AssimpVector3D_8 {

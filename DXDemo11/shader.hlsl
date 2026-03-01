@@ -22,7 +22,8 @@ cbuffer GlobalData : register(b0, space0)
 {
     row_major float4x4 MVP; // MVP 矩阵
 	
-    row_major float4x4 BoneTransformMatrixGroup[512]; // 骨骼偏移矩阵组，每个矩阵对应一块骨骼，这里仅设置了最多 512 个骨骼，实际可以更多
+//    row_major float4x4 BoneTransformMatrixGroup[512]; // 骨骼偏移矩阵组，每个矩阵对应一块骨骼，这里仅设置了最多 512 个骨骼，实际可以更多
+    float4x4 BoneTransformMatrixGroup[512]; // 骨骼偏移矩阵组，每个矩阵对应一块骨骼，这里仅设置了最多 512 个骨骼，实际可以更多
 }
 
 
@@ -75,10 +76,10 @@ float4 PSMain(VSOutput input) : SV_Target
     {
 		// 在像素着色器根据光栅化插值得到的 UV 坐标对纹理进行采样
         DiffuseColor = m_texure.Sample(m_sampler, input.texcoordUV);
+
+		// 颜色混合，对于 Emissive Texture 自发光纹理而言，顶点会自带 color 信息的，需要将纹理颜色相混合
+        DiffuseColor = input.color * DiffuseColor;
     }
-	
-	// 还要进行颜色混合，因为对于 Emissive Texture 自发光纹理而言，顶点会自带 color 信息的，需要将纹理颜色相混合
-    DiffuseColor = input.color * DiffuseColor;
 	
     return DiffuseColor; // 返回像素颜色，接下来会进行深度模板测试与混合
 }

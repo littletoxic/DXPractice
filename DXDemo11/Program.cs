@@ -97,7 +97,7 @@ internal static class DX12TextureHelper {
         new(GUID_WICPixelFormat32bppGrayFloat, GUID_WICPixelFormat32bppGrayFloat),
         new(GUID_WICPixelFormat16bppGrayHalf, GUID_WICPixelFormat16bppGrayHalf),
         new(GUID_WICPixelFormat16bppGray, GUID_WICPixelFormat16bppGray),
-        new(GUID_WICPixelFormat8bppGray, GUID_WICPixelFormat8bppGray),
+        new(GUID_WICPixelFormat8bppGray, GUID_WICPixelFormat32bppRGBA),
         new(GUID_WICPixelFormat8bppAlpha, GUID_WICPixelFormat8bppAlpha)
     ]);
 
@@ -262,6 +262,7 @@ internal struct Vertex {
 internal sealed class Material {
     internal string FilePath;
     internal TextureType Type;
+    internal Vector4 EmissiveColor;
     internal ComPtr<ID3D12Resource> UploadTexture;
     internal ComPtr<ID3D12Resource> DefaultTexture;
 
@@ -652,20 +653,28 @@ internal sealed class DX12Engine {
         foreach (ref var material in modelScene.Materials) {
 
             if (GetMaterialTexture(material, TextureType.EMISSIVE, 0, out var textureFilePath) == ReturnCode.SUCCESS) {
+                Debug.WriteLine($"Material[{_materialGroup.Count}] EMISSIVE: {textureFilePath}");
                 var mt = new Material() {
                     FilePath = ModelTextureFilePath + textureFilePath,
                     Type = TextureType.EMISSIVE,
                 };
                 _materialGroup.Add(mt);
             } else if (GetMaterialTexture(material, TextureType.DIFFUSE, 0, out textureFilePath) == ReturnCode.SUCCESS) {
+                Debug.WriteLine($"Material[{_materialGroup.Count}] DIFFUSE(fallback): {textureFilePath}");
                 var mt = new Material() {
                     FilePath = ModelTextureFilePath + textureFilePath,
                     Type = TextureType.DIFFUSE,
                 };
                 _materialGroup.Add(mt);
             } else {
+                var hasEmissive = GetMaterialColor(material, _AI_MATKEY_COLOR_EMISSIVE_BASE, 0, 0, out var emissiveColor) == ReturnCode.SUCCESS;
+                Vector4 ec = hasEmissive ? emissiveColor : Vector4.One;
+                // emissiveFactor 是线性空间，纹理管线是 sRGB 直通，需要转换到 sRGB
+                ec = new(LinearToSRGB(ec.X), LinearToSRGB(ec.Y), LinearToSRGB(ec.Z), 1.0f);
+                Debug.WriteLine($"Material[{_materialGroup.Count}] NONE: emissiveColor=({ec.X:F4},{ec.Y:F4},{ec.Z:F4},{ec.W:F4})");
                 var mt = new Material() {
                     Type = TextureType.NONE,
+                    EmissiveColor = ec,
                 };
                 _materialGroup.Add(mt);
             }
@@ -711,6 +720,8 @@ internal sealed class DX12Engine {
             if (mesh.mNumVertices == 0)
                 continue;
 
+            var matIdx = (int)mesh.mMaterialIndex;
+
             for (int j = 0; j < mesh.mNumVertices; j++) {
                 var newVertex = new Vertex {
                     Position = new(mesh.Vertices[j], 1.0f)
@@ -725,7 +736,10 @@ internal sealed class DX12Engine {
                     newVertex.TexCoordUV = new(-1.0f, -1.0f); // 默认纹理 UV 坐标，Pixel Shader 会进行处理
                 }
 
-                if (mesh.HasVertexColors(0)) {
+                if (_materialGroup[matIdx].Type == TextureType.NONE) {
+                    newVertex.Color = _materialGroup[matIdx].EmissiveColor;
+                    newVertex.TexCoordUV = new(-1.0f, -1.0f); // NONE 材质不采样纹理，强制走 shader 的 input.color 路径
+                } else if (mesh.HasVertexColors(0)) {
                     newVertex.Color = mesh.Colors(0)[j];
                 } else {
                     newVertex.Color = new(1.0f, 1.0f, 1.0f, 1.0f);
@@ -802,9 +816,9 @@ internal sealed class DX12Engine {
         // 读取所有骨骼、网格数据完成后，对 BoneNode_TransformGroup 里面的所有矩阵进行转置，不转会渲染错误
         // 因为在 shader 中我们指定了 row_major 让 GPU 按行读取矩阵，但从 Assimp 获取并变换的矩阵是列主序的
         // 我们需要使用 XMMatrixTranspose 转置这些矩阵，让这些矩阵变成行主序
-        for (int i = 0; i < _boneNodeTransformGroup.Count; i++) {
-            _boneNodeTransformGroup[i] = Matrix4x4.Transpose(_boneNodeTransformGroup[i]);
-        }
+        //for (int i = 0; i < _boneNodeTransformGroup.Count; i++) {
+        //    _boneNodeTransformGroup[i] = Matrix4x4.Transpose(_boneNodeTransformGroup[i]);
+        //}
     }
 
     private void STEP13_CalcModelBoundingBox() {
@@ -870,6 +884,7 @@ internal sealed class DX12Engine {
 
         if (DX12TextureHelper.GetTargetPixelFormat(pixelFormat, out var targetFormat)) {
             _textureFormat = DX12TextureHelper.GetDXGIFormatFromPixelFormat(targetFormat); // 获取 DX12 支持的格式
+            Debug.WriteLine($"  Texture: {textureFilename} -> format={_textureFormat}, bpp will be determined next");
         } else {
             MessageBox(default, "此纹理不受支持!", "提示", MESSAGEBOX_STYLE.MB_OK);
             return false;
@@ -895,6 +910,10 @@ internal sealed class DX12Engine {
 
         return true;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float LinearToSRGB(float linear) =>
+        linear <= 0.0031308f ? linear * 12.92f : 1.055f * MathF.Pow(linear, 1.0f / 2.4f) - 0.055f;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint CeilToMultiple(uint value, uint multiple) {
@@ -1060,7 +1079,7 @@ internal sealed class DX12Engine {
             defaultTextureData[i * 4 + 0] = 255; // R
             defaultTextureData[i * 4 + 1] = 255; // G
             defaultTextureData[i * 4 + 2] = 255; // B
-            defaultTextureData[i * 4 + 3] = 128; // A
+            defaultTextureData[i * 4 + 3] = 255; // A
         }
 
         _materialGroup[index].UploadTexture.Managed.Map(0, null, out var transferPointer);
@@ -1127,7 +1146,7 @@ internal sealed class DX12Engine {
         _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
-    private void STEP14_CreateModelTextureResource() {
+    private unsafe void STEP14_CreateModelTextureResource() {
         CreateSRVHeap();
 
         var currentCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
@@ -1150,6 +1169,17 @@ internal sealed class DX12Engine {
 
             currentCPUHandle.ptr += srvDescriptorSize;
             currentGPUHandle.ptr += srvDescriptorSize;
+        }
+
+        // 纹理复制完成后，将所有纹理从 COPY_DEST 转换为 PIXEL_SHADER_RESOURCE
+        for (var i = 0; i < _materialGroup.Count; i++) {
+            var barrier = new D3D12_RESOURCE_BARRIER {
+                Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            };
+            barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
+            barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+            barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            _commandList.ResourceBarrier([barrier]);
         }
 
         StartCommandExecute();
@@ -1506,6 +1536,7 @@ internal sealed class DX12Engine {
         psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 
         psoDesc.BlendState.RenderTarget._0.BlendEnable = true; // 开启混合，因为模型用到了自发光和默认纹理
+        //psoDesc.BlendState.RenderTarget._0.BlendEnable = false; // 开启混合，因为模型用到了自发光和默认纹理
 
         // 下面三个选项控制 RGB 通道的混合，Alpha 通道与 RGB 通道的混合是分开的，这一点请留意！
         // Result = Src * SrcA + Dest * (1 - SrcA)
