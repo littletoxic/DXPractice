@@ -77,9 +77,9 @@ internal static class Extensions {
         fence = result as T;
     }
 
-    internal static unsafe void CreateRootSignature<T>(this ID3D12Device device, uint nodeMask, void* pBlobWithRootSignature, nuint blobLengthInBytes, out T fence) where T : class, ID3D12RootSignature {
+    internal static unsafe void CreateRootSignature<T>(this ID3D12Device device, uint nodeMask, void* pBlobWithRootSignature, nuint blobLengthInBytes, out T rootSignature) where T : class, ID3D12RootSignature {
         device.CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, typeof(T).GUID, out var result);
-        fence = result as T;
+        rootSignature = result as T;
     }
 
     internal static void CreateGraphicsPipelineState<T>(this ID3D12Device device, in D3D12_GRAPHICS_PIPELINE_STATE_DESC desc, out T pipelineState) where T : class, ID3D12PipelineState {
