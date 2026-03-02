@@ -8,6 +8,13 @@ using Windows.Win32.Graphics.Dxgi;
 namespace Windows.Win32;
 
 internal static partial class PInvoke {
+    internal static uint D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(uint Src0, uint Src1, uint Src2, uint Src3) =>
+        (Src0 & D3D12_SHADER_COMPONENT_MAPPING_MASK)
+        | ((Src1 & D3D12_SHADER_COMPONENT_MAPPING_MASK) << (int)D3D12_SHADER_COMPONENT_MAPPING_SHIFT)
+        | ((Src2 & D3D12_SHADER_COMPONENT_MAPPING_MASK) << (int)(D3D12_SHADER_COMPONENT_MAPPING_SHIFT * 2))
+        | ((Src3 & D3D12_SHADER_COMPONENT_MAPPING_MASK) << (int)(D3D12_SHADER_COMPONENT_MAPPING_SHIFT * 3))
+        | D3D12_SHADER_COMPONENT_MAPPING_ALWAYS_SET_BIT_AVOIDING_ZEROMEM_MISTAKES;
+
     internal static HRESULT D3D12GetDebugInterface<T>(out T debug) where T : class, ID3D12Debug {
         var hr = D3D12GetDebugInterface(typeof(T).GUID, out var result);
         debug = result as T;

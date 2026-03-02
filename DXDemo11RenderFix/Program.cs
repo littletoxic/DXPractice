@@ -105,6 +105,32 @@ internal static class DX12TextureHelper {
     internal static bool GetTargetPixelFormat(Guid sourceFormat, out Guid targetFormat) => WicConvert.TryGetValue(sourceFormat, out targetFormat);
 
     internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT_UNKNOWN;
+
+    // 根据 WIC target 格式的语义选择正确的 Shader4ComponentMapping
+    // WIC 格式名称携带语义信息（Gray = 灰度, Alpha = 仅 alpha, BGR 无 A = 无 alpha）
+    // 而转换后的 DXGI_FORMAT（如 R8_UNORM）不携带这些语义
+    internal static uint GetShader4ComponentMapping(Guid targetWicFormat) {
+        if (targetWicFormat == GUID_WICPixelFormat8bppGray
+            || targetWicFormat == GUID_WICPixelFormat16bppGray
+            || targetWicFormat == GUID_WICPixelFormat16bppGrayHalf
+            || targetWicFormat == GUID_WICPixelFormat32bppGrayFloat) {
+            // 灰度: (R, R, R, 1)
+            return D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(0, 0, 0, 5);
+        }
+
+        if (targetWicFormat == GUID_WICPixelFormat8bppAlpha) {
+            // 仅 alpha: (A, A, A, A)
+            return D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(3, 3, 3, 3);
+        }
+
+        if (targetWicFormat == GUID_WICPixelFormat32bppBGR
+            || targetWicFormat == GUID_WICPixelFormat16bppBGR565) {
+            // 无 alpha: (R, G, B, 1)
+            return D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(0, 1, 2, 5);
+        }
+
+        return D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    }
 }
 
 internal static class CallBackWrapper {
@@ -376,6 +402,7 @@ internal sealed class DX12Engine {
     private IWICFormatConverter _wicFormatConverter;
     private IWICBitmapSource _wicBitmapSource;
     private DXGI_FORMAT _textureFormat = DXGI_FORMAT_UNKNOWN;
+    private uint _shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     private uint _textureWidth;
     private uint _textureHeight;
     private uint _bitsPerPixel;
@@ -870,6 +897,7 @@ internal sealed class DX12Engine {
 
         if (DX12TextureHelper.GetTargetPixelFormat(pixelFormat, out var targetFormat)) {
             _textureFormat = DX12TextureHelper.GetDXGIFormatFromPixelFormat(targetFormat); // 获取 DX12 支持的格式
+            _shader4ComponentMapping = DX12TextureHelper.GetShader4ComponentMapping(targetFormat);
         } else {
             MessageBox(default, "此纹理不受支持!", "提示", MESSAGEBOX_STYLE.MB_OK);
             return false;
@@ -1029,6 +1057,7 @@ internal sealed class DX12Engine {
 
         // 注意！默认纹理的纹理格式要选 DXGI_FORMAT_R8G8B8A8_UNORM！
         _textureFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        _shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
         var defaultResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
@@ -1106,7 +1135,7 @@ internal sealed class DX12Engine {
         var srvDescriptorDesc = new D3D12_SHADER_RESOURCE_VIEW_DESC() {
             ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
             Format = _textureFormat,
-            Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            Shader4ComponentMapping = _shader4ComponentMapping,
             Anonymous = new() { Texture2D = new() { MipLevels = 1 } },
         };
 
