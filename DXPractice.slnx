@@ -9,6 +9,7 @@
   <Project Path="DXDemo1/DXDemo1.csproj" Id="d9b1b87e-5f14-41eb-b347-efda3bf8b779" />
   <Project Path="DXDemo10/DXDemo10.csproj" Id="a00152e8-64df-4103-a17b-ce441d5761ce" />
   <Project Path="DXDemo11/DXDemo11.csproj" Id="7ce0961f-d9ed-489a-a783-d4ece21e068e" />
+  <Project Path="DXDemo11RenderFix/DXDemo11RenderFix.csproj" />
   <Project Path="DXDemo12/DXDemo12.csproj" Id="4a431b24-da55-4278-bd3e-d5b4a22aba0b" />
   <Project Path="DXDemo13/DXDemo13.csproj" Id="64aeb497-75f6-46ff-9f6a-c44b0e0d5153" />
   <Project Path="DXDemo2/DXDemo2.csproj" Id="e073df7c-e097-45bf-8bf3-ec24d28f09e7" />

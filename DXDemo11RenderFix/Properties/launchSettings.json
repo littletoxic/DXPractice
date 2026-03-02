@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DXDemo11RenderFix": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
