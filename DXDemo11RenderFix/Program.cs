@@ -290,6 +290,7 @@ internal sealed class Material {
     internal TextureType Type;
     internal ComPtr<ID3D12Resource> UploadTexture;
     internal ComPtr<ID3D12Resource> DefaultTexture;
+    internal Vector4 Color;
 
     internal D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle;
     internal D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle;
@@ -694,6 +695,15 @@ internal sealed class DX12Engine {
                 var mt = new Material() {
                     Type = TextureType.NONE,
                 };
+
+                if (GetMaterialColor(material, _AI_MATKEY_COLOR_EMISSIVE_BASE, 0, 0, out var color) == ReturnCode.SUCCESS) {
+                    mt.Color = color;
+                } else if (GetMaterialColor(material, _AI_MATKEY_COLOR_DIFFUSE_BASE, 0, 0, out color) == ReturnCode.SUCCESS) {
+                    mt.Color = color;
+                } else {
+                    mt.Color = new(1, 1, 1, 1);
+                }
+
                 _materialGroup.Add(mt);
             }
         }
@@ -748,6 +758,8 @@ internal sealed class DX12Engine {
                 // 对于同一个顶点，不同的 UV 通道可以有不同的 UV 坐标，常用于光照，但我们这里不涉及，直接获取第 0 号纹理 UV 即可
                 if (mesh.HasTextureCoords(0)) {
                     newVertex.TexCoordUV = new(mesh.TextureCoords(0)[j].x, mesh.TextureCoords(0)[j].y);
+                } else if (_materialGroup[(int)mesh.mMaterialIndex].Type == TextureType.NONE) {
+                    newVertex.TexCoordUV = new(0.0f, 0.0f); // 无纹理材质，采样默认纹理（颜色来自 Material.Color）
                 } else {
                     newVertex.TexCoordUV = new(-1.0f, -1.0f); // 默认纹理 UV 坐标，Pixel Shader 会进行处理
                 }
@@ -1085,11 +1097,17 @@ internal sealed class DX12Engine {
     private unsafe void CopyDefaultTextureToDefaultResource(int index) {
         Span<byte> defaultTextureData = stackalloc byte[2 * 2 * 4];
 
+        var color = _materialGroup[index].Color;
+        byte r = (byte)(Math.Clamp(color.X, 0f, 1f) * 255);
+        byte g = (byte)(Math.Clamp(color.Y, 0f, 1f) * 255);
+        byte b = (byte)(Math.Clamp(color.Z, 0f, 1f) * 255);
+        byte a = (byte)(Math.Clamp(color.W, 0f, 1f) * 255);
+
         for (int i = 0; i < 2 * 2; i++) {
-            defaultTextureData[i * 4 + 0] = 255; // R
-            defaultTextureData[i * 4 + 1] = 255; // G
-            defaultTextureData[i * 4 + 2] = 255; // B
-            defaultTextureData[i * 4 + 3] = 128; // A
+            defaultTextureData[i * 4 + 0] = r; // R
+            defaultTextureData[i * 4 + 1] = g; // G
+            defaultTextureData[i * 4 + 2] = b; // B
+            defaultTextureData[i * 4 + 3] = a; // A
         }
 
         _materialGroup[index].UploadTexture.Managed.Map(0, null, out var transferPointer);

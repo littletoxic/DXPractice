@@ -8,6 +8,8 @@ namespace Assimp;
 
 internal static partial class PInvoke {
     internal const string _AI_MATKEY_NAME_BASE = "?mat.name";
+    internal const string _AI_MATKEY_COLOR_DIFFUSE_BASE = "$clr.diffuse";
+    internal const string _AI_MATKEY_COLOR_EMISSIVE_BASE = "$clr.emissive";
 
     internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) {
         return ref *ImportFile(pFile, pFlags);
