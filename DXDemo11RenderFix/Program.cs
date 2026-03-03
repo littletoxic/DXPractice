@@ -291,6 +291,7 @@ internal sealed class Material {
     internal ComPtr<ID3D12Resource> UploadTexture;
     internal ComPtr<ID3D12Resource> DefaultTexture;
     internal Vector4 Color;
+    internal bool DoubleSided;
 
     internal D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle;
     internal D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle;
@@ -437,6 +438,7 @@ internal sealed class DX12Engine {
     private static readonly PCSTR BlendWeight = CreatePCSTR("BLENDWEIGHT");
 
     private ID3D12PipelineState _pipelineStateObject;
+    private ID3D12PipelineState _pipelineStateObjectDoubleSided;
 
     private readonly Camera _firstCamera = new();
 
@@ -705,6 +707,10 @@ internal sealed class DX12Engine {
                 }
 
                 _materialGroup.Add(mt);
+            }
+
+            if (GetMaterialInteger(material, _AI_MATKEY_TWOSIDED_BASE, 0, 0, out var twosided) == ReturnCode.SUCCESS && twosided > 0) {
+                _materialGroup[^1].DoubleSided = true;
             }
         }
     }
@@ -1402,14 +1408,14 @@ internal sealed class DX12Engine {
             ShaderRegister = 0,
             RegisterSpace = 0,
             ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
-            Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+            Filter = D3D12_FILTER_ANISOTROPIC,
             AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             MinLOD = 0.0f,
             MaxLOD = D3D12_FLOAT32_MAX,
             MipLODBias = 0,
-            MaxAnisotropy = 1,
+            MaxAnisotropy = 16,
             ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
         };
 
@@ -1585,6 +1591,9 @@ internal sealed class DX12Engine {
         psoDesc.SampleMask = uint.MaxValue;
 
         _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObject);
+
+        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObjectDoubleSided);
     }
 
     private void UpdateConstantBuffer() {
@@ -1608,7 +1617,6 @@ internal sealed class DX12Engine {
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.SetGraphicsRootSignature(_rootSignature.Managed);
-        _commandList.SetPipelineState(_pipelineStateObject);
 
         _commandList.RSSetViewports([_viewPort]);
         _commandList.RSSetScissorRects([_scissorRect]);
@@ -1630,7 +1638,9 @@ internal sealed class DX12Engine {
         _commandList.IASetIndexBuffer(_indexBufferView);
 
         foreach (var mesh in _meshGroup) {
-            _commandList.SetGraphicsRootDescriptorTable(1, _materialGroup[mesh.MaterialIndex].GPUHandle);
+            var mat = _materialGroup[mesh.MaterialIndex];
+            _commandList.SetPipelineState(mat.DoubleSided ? _pipelineStateObjectDoubleSided : _pipelineStateObject);
+            _commandList.SetGraphicsRootDescriptorTable(1, mat.GPUHandle);
             _commandList.DrawIndexedInstanced(mesh.IndexCount, 1, mesh.IndexGroupOffset, mesh.VertexGroupOffset, 0);
         }
 
