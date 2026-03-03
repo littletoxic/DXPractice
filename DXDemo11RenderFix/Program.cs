@@ -748,18 +748,17 @@ internal sealed class DX12Engine {
             if (mesh.mNumVertices == 0)
                 continue;
 
+
             for (int j = 0; j < mesh.mNumVertices; j++) {
                 var newVertex = new Vertex {
                     Position = new(mesh.Vertices[j], 1.0f)
                 };
 
-                // 新节点纹理 UV，如果有就添加，没有就默认 (-1, -1)
-                // 注意这个 0 指的是第 0 号 UV 通道 (详情请见 UE5 文档: UV 通道)
-                // 对于同一个顶点，不同的 UV 通道可以有不同的 UV 坐标，常用于光照，但我们这里不涉及，直接获取第 0 号纹理 UV 即可
-                if (mesh.HasTextureCoords(0)) {
+                // 无纹理材质强制采样默认纹理中心，忽略模型原始 UV（原始 UV 可能超出 [0,1]，BORDER 模式会采到透明黑色）
+                if (_materialGroup[(int)mesh.mMaterialIndex].Type == TextureType.NONE) {
+                    newVertex.TexCoordUV = new(0.5f, 0.5f);
+                } else if (mesh.HasTextureCoords(0)) {
                     newVertex.TexCoordUV = new(mesh.TextureCoords(0)[j].x, mesh.TextureCoords(0)[j].y);
-                } else if (_materialGroup[(int)mesh.mMaterialIndex].Type == TextureType.NONE) {
-                    newVertex.TexCoordUV = new(0.0f, 0.0f); // 无纹理材质，采样默认纹理（颜色来自 Material.Color）
                 } else {
                     newVertex.TexCoordUV = new(-1.0f, -1.0f); // 默认纹理 UV 坐标，Pixel Shader 会进行处理
                 }
@@ -1174,7 +1173,7 @@ internal sealed class DX12Engine {
         _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
-    private void STEP14_CreateModelTextureResource() {
+    private unsafe void STEP14_CreateModelTextureResource() {
         CreateSRVHeap();
 
         var currentCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
@@ -1197,6 +1196,17 @@ internal sealed class DX12Engine {
 
             currentCPUHandle.ptr += srvDescriptorSize;
             currentGPUHandle.ptr += srvDescriptorSize;
+        }
+
+        // 纹理复制完成后，将所有纹理从 COPY_DEST 转换为 PIXEL_SHADER_RESOURCE
+        for (var i = 0; i < _materialGroup.Count; i++) {
+            var barrier = new D3D12_RESOURCE_BARRIER {
+                Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            };
+            barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
+            barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+            barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            _commandList.ResourceBarrier([barrier]);
         }
 
         StartCommandExecute();
