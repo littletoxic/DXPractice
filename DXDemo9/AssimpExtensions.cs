@@ -57,5 +57,5 @@ internal unsafe ref struct PtrSpan<T>(T** ptr, uint count) where T : unmanaged {
 }
 
 internal partial struct AssimpVector3D {
-    public static implicit operator Vector3(AssimpVector3D v) => Unsafe.As<AssimpVector3D, Vector3>(ref v);
+    public static implicit operator Vector3(AssimpVector3D v) => Unsafe.BitCast<AssimpVector3D, Vector3>(v);
 }

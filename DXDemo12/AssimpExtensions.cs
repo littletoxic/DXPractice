@@ -125,14 +125,14 @@ internal static class Extensions {
 }
 
 internal partial struct AssimpMatrix4x4 {
-    public static implicit operator Matrix4x4(AssimpMatrix4x4 m) => Unsafe.As<AssimpMatrix4x4, Matrix4x4>(ref m);
+    public static implicit operator Matrix4x4(AssimpMatrix4x4 m) => Unsafe.BitCast<AssimpMatrix4x4, Matrix4x4>(m);
 
 }
 
 internal partial struct AssimpVector3D {
-    public static implicit operator Vector3(AssimpVector3D v) => Unsafe.As<AssimpVector3D, Vector3>(ref v);
+    public static implicit operator Vector3(AssimpVector3D v) => Unsafe.BitCast<AssimpVector3D, Vector3>(v);
 }
 
 internal partial struct Color4D {
-    public static implicit operator Vector4(Color4D c) => Unsafe.As<Color4D, Vector4>(ref c);
+    public static implicit operator Vector4(Color4D c) => Unsafe.BitCast<Color4D, Vector4>(c);
 }
