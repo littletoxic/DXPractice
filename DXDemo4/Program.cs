@@ -345,7 +345,7 @@ internal sealed class DX12Engine {
             CoCreateInstance(
                 CLSID_WICImagingFactory2,
                 null,
-                CLSCTX.CLSCTX_SERVER,
+                CLSCTX.CLSCTX_INPROC_SERVER,
                 out _wicFactory).ThrowOnFailure();
         }
 
@@ -648,7 +648,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var vertexShaderBlob,
-            out var errorBlobVS).ThrowOnFailure();
+            out var errorBlobVS);
 
         if (errorBlobVS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
@@ -668,7 +668,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var pixelShaderBlob,
-            out var errorBlobPS).ThrowOnFailure();
+            out var errorBlobPS);
 
         if (errorBlobPS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());

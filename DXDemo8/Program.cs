@@ -1802,7 +1802,7 @@ internal sealed class DX12Engine {
         internal Matrix4x4 MVPMatrix;
     }
     private ID3D12Resource _cbvResource;
-    private nint mvpBuffer;
+    private nint _mvpBuffer;
 
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
@@ -2061,7 +2061,7 @@ internal sealed class DX12Engine {
             CoCreateInstance(
                 CLSID_WICImagingFactory2,
                 null,
-                CLSCTX.CLSCTX_SERVER,
+                CLSCTX.CLSCTX_INPROC_SERVER,
                 out _wicFactory).ThrowOnFailure();
         }
 
@@ -2296,7 +2296,7 @@ internal sealed class DX12Engine {
             out _cbvResource);
 
         _cbvResource.Map(0, null, out var cbvPointer);
-        mvpBuffer = (nint)cbvPointer;
+        _mvpBuffer = (nint)cbvPointer;
     }
 
     private unsafe void CreateRootSignature() {
@@ -2434,7 +2434,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var vertexShaderBlob,
-            out var errorBlobVS).ThrowOnFailure();
+            out var errorBlobVS);
 
         if (errorBlobVS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
@@ -2454,7 +2454,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var pixelShaderBlob,
-            out var errorBlobPS).ThrowOnFailure();
+            out var errorBlobPS);
 
         if (errorBlobPS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());
@@ -2508,7 +2508,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var vertexShaderBlob,
-            out var errorBlobVS).ThrowOnFailure();
+            out var errorBlobVS);
 
         if (errorBlobVS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
@@ -2528,7 +2528,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var pixelShaderBlob,
-            out var errorBlobPS).ThrowOnFailure();
+            out var errorBlobPS);
 
         if (errorBlobPS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());
@@ -2568,7 +2568,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var vertexShaderBlob,
-            out var errorBlobVS).ThrowOnFailure();
+            out var errorBlobVS);
 
         if (errorBlobVS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
@@ -2588,7 +2588,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var pixelShaderBlob,
-            out var errorBlobPS).ThrowOnFailure();
+            out var errorBlobPS);
 
         if (errorBlobPS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());
@@ -2636,7 +2636,7 @@ internal sealed class DX12Engine {
 
 
     private unsafe void UpdateConstantBuffer() {
-        Unsafe.AsRef<CBuffer>((void*)mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
+        Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
     }
 
     private unsafe void Render() {

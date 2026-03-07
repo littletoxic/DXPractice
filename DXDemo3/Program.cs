@@ -328,7 +328,7 @@ internal sealed unsafe class DX12Engine {
 #endif
             0,
             out var vertexShaderBlob,
-            out var errorBlobVS).ThrowOnFailure();
+            out var errorBlobVS);
 
         if (errorBlobVS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
@@ -348,7 +348,7 @@ internal sealed unsafe class DX12Engine {
 #endif
             0,
             out var pixelShaderBlob,
-            out var errorBlobPS).ThrowOnFailure();
+            out var errorBlobPS);
 
         if (errorBlobPS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());

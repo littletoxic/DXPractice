@@ -259,7 +259,7 @@ internal struct Vertex {
     internal Vector4 Normal;
     internal Vector2 TexCoordUV;
     internal Vector4 Color;
-    internal Buffer4<int> BoneIndices;
+    internal Buffer4<uint> BoneIndices;
     internal Buffer4<float> BoneWeights;
 }
 
@@ -418,7 +418,7 @@ internal sealed class DX12Engine {
         internal Buffer512<Matrix4x4> BoneTransformMatrix;
     }
     private ID3D12Resource _cbvResource;
-    private nint mvpBuffer;
+    private nint _mvpBuffer;
 
     private readonly Light _globalLight = new();
     private struct CBufferLight {
@@ -814,7 +814,7 @@ internal sealed class DX12Engine {
                         var weight = vertexWeight.mWeight;
                         var weightsCount = _vertexWeightsCountGroup[(int)vertexId];
 
-                        verticesSpan[(int)vertexId].BoneIndices[weightsCount] = finalSkinnedMeshIndex;
+                        verticesSpan[(int)vertexId].BoneIndices[weightsCount] = (uint)finalSkinnedMeshIndex;
                         verticesSpan[(int)vertexId].BoneWeights[weightsCount] = weight;
                         _vertexWeightsCountGroup[(int)vertexId]++;
                     }
@@ -828,7 +828,7 @@ internal sealed class DX12Engine {
                     var vertexId = currentMeshVertexGroupOffset + j;
                     var weightsCount = _vertexWeightsCountGroup[vertexId];
 
-                    verticesSpan[vertexId].BoneIndices[weightsCount] = boneIndex;
+                    verticesSpan[vertexId].BoneIndices[weightsCount] = (uint)boneIndex;
                     verticesSpan[vertexId].BoneWeights[weightsCount] = 1.0f;
                     _vertexWeightsCountGroup[vertexId]++;
                 }
@@ -900,7 +900,7 @@ internal sealed class DX12Engine {
             CoCreateInstance(
                 CLSID_WICImagingFactory2,
                 null,
-                CLSCTX.CLSCTX_SERVER,
+                CLSCTX.CLSCTX_INPROC_SERVER,
                 out _wicFactory).ThrowOnFailure();
         }
 
@@ -1366,7 +1366,7 @@ internal sealed class DX12Engine {
             out _cbvResource);
 
         _cbvResource.Map(0, null, out var cbvPointer);
-        mvpBuffer = (nint)cbvPointer;
+        _mvpBuffer = (nint)cbvPointer;
 
 
         uint globalLightWidth = CeilToMultiple((uint)Unsafe.SizeOf<CBufferLight>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
@@ -1588,7 +1588,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var vertexShaderBlob,
-            out var errorBlobVS).ThrowOnFailure();
+            out var errorBlobVS);
 
         if (errorBlobVS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
@@ -1608,7 +1608,7 @@ internal sealed class DX12Engine {
 #endif
             0,
             out var pixelShaderBlob,
-            out var errorBlobPS).ThrowOnFailure();
+            out var errorBlobPS);
 
         if (errorBlobPS != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());
@@ -1660,7 +1660,7 @@ internal sealed class DX12Engine {
     }
 
     private void UpdateConstantBuffer() {
-        ref var buffer = ref Unsafe.AsRef<CBuffer>(mvpBuffer);
+        ref var buffer = ref Unsafe.AsRef<CBuffer>(_mvpBuffer);
         buffer.MVPMatrix = _firstCamera.MVPMatrix;
         CollectionsMarshal.AsSpan(_boneNodeTransformGroup).CopyTo(buffer.BoneTransformMatrix);
 

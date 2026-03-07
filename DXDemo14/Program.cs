@@ -1,7 +1,10 @@
-﻿// https://blog.csdn.net/DGAF2198588973/article/details/155771199
+﻿// https://blog.csdn.net/DGAF2198588973/article/details/157870274
 
-// 鸣谢原作者大大: close2animation (https://sketchfab.com/close2animation)
-// 模型项目地址: https://sketchfab.com/3d-models/kurumi-model-f776c64883414c71b9441b8c45342533
+// GLTF 模型鸣谢原作者大大: Partaevil (https://sketchfab.com/Partaevil)
+// 模型项目地址: https://sketchfab.com/3d-models/aqua-anime-chibi-model-549de66768ed422681106d3028d1cf4f
+
+// HDR 贴图鸣谢原作者大大：Jarod Guest, Sergej Majboroda
+// 贴图源地址：https://polyhaven.com/a/autumn_field_puresky
 
 using System.Buffers;
 using System.Collections.Frozen;
@@ -22,7 +25,7 @@ using Windows.Win32.System.Com;
 using Windows.Win32.System.SystemServices;
 using Windows.Win32.UI.WindowsAndMessaging;
 
-namespace DXDemo11RenderFix;
+namespace DXDemo14;
 
 internal static class DX12TextureHelper {
 
@@ -105,32 +108,6 @@ internal static class DX12TextureHelper {
     internal static bool GetTargetPixelFormat(Guid sourceFormat, out Guid targetFormat) => WicConvert.TryGetValue(sourceFormat, out targetFormat);
 
     internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT_UNKNOWN;
-
-    // 根据 WIC target 格式的语义选择正确的 Shader4ComponentMapping
-    // WIC 格式名称携带语义信息（Gray = 灰度, Alpha = 仅 alpha, BGR 无 A = 无 alpha）
-    // 而转换后的 DXGI_FORMAT（如 R8_UNORM）不携带这些语义
-    internal static uint GetShader4ComponentMapping(Guid targetWicFormat) {
-        if (targetWicFormat == GUID_WICPixelFormat8bppGray
-            || targetWicFormat == GUID_WICPixelFormat16bppGray
-            || targetWicFormat == GUID_WICPixelFormat16bppGrayHalf
-            || targetWicFormat == GUID_WICPixelFormat32bppGrayFloat) {
-            // 灰度: (R, R, R, 1)
-            return D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(0, 0, 0, 5);
-        }
-
-        if (targetWicFormat == GUID_WICPixelFormat8bppAlpha) {
-            // 仅 alpha: (A, A, A, A)
-            return D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(3, 3, 3, 3);
-        }
-
-        if (targetWicFormat == GUID_WICPixelFormat32bppBGR
-            || targetWicFormat == GUID_WICPixelFormat16bppBGR565) {
-            // 无 alpha: (R, G, B, 1)
-            return D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(0, 1, 2, 5);
-        }
-
-        return D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    }
 }
 
 internal static class CallBackWrapper {
@@ -171,10 +148,28 @@ internal sealed class Camera {
     // 投影矩阵(注意近平面和远平面距离不能 <= 0!)
     private Matrix4x4 _projectionMatrix;
 
+    private void UpdateMVPMatrix() {
+        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
+    }
+
     internal Matrix4x4 MVPMatrix {
         get {
-            _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
+            UpdateMVPMatrix();
             return _modelMatrix * _viewMatrix * _projectionMatrix; // MVP 矩阵
+        }
+    }
+
+    internal Matrix4x4 InverseViewMatrix {
+        get {
+            UpdateMVPMatrix();
+            return Matrix4x4.Invert(_viewMatrix, out var inverseView) ? inverseView : throw new InvalidOperationException("求逆失败");
+        }
+    }
+
+    internal Matrix4x4 InverseProjectionMatrix {
+        get {
+            UpdateMVPMatrix();
+            return Matrix4x4.Invert(_projectionMatrix, out var inverseProjection) ? inverseProjection : throw new InvalidOperationException("求逆失败");
         }
     }
 
@@ -265,6 +260,7 @@ internal sealed class Camera {
         _focalLength = Vector3.Distance(_focusPosition, _eyePosition);
         _rightDirection = Vector3.Normalize(Vector3.Cross(_viewDirection, _upDirection));
     }
+
 }
 
 [InlineArray(4)]
@@ -272,8 +268,8 @@ internal struct Buffer4<T> where T : unmanaged {
     private T _element0;
 }
 
-[InlineArray(512)]
-internal struct Buffer512<T> where T : unmanaged {
+[InlineArray(768)]
+internal struct Buffer768<T> where T : unmanaged {
     private T _element0;
 }
 
@@ -290,11 +286,17 @@ internal sealed class Material {
     internal TextureType Type;
     internal ComPtr<ID3D12Resource> UploadTexture;
     internal ComPtr<ID3D12Resource> DefaultTexture;
-    internal Vector4 Color;
-    internal bool DoubleSided;
 
     internal D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle;
     internal D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle;
+
+    internal MaterialCBuffer CBufferData;
+
+    internal struct MaterialCBuffer {
+        internal Vector4 DiffuseAlbedoLight;
+        internal Vector4 SpecularLight;
+        internal float Glossiness;
+    }
 }
 
 internal struct Mesh {
@@ -315,6 +317,7 @@ internal sealed class DX12Engine {
 
     private const int FrameCount = 3;
     private static readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
+    private static readonly float[] Black = [0f, 0f, 0f, 1f];
 
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
@@ -368,8 +371,8 @@ internal sealed class DX12Engine {
     private const DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
 
-    private const string ModelFileName = "kurumi/scene.gltf";
-    private const string ModelTextureFilePath = "kurumi/";
+    private const string ModelFileName = "aqua/scene.gltf";
+    private const string ModelTextureFilePath = "aqua/";
     private nint _modelScene;
 
     // 导入模型使用的标志
@@ -404,7 +407,6 @@ internal sealed class DX12Engine {
     private IWICFormatConverter _wicFormatConverter;
     private IWICBitmapSource _wicBitmapSource;
     private DXGI_FORMAT _textureFormat = DXGI_FORMAT_UNKNOWN;
-    private uint _shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     private uint _textureWidth;
     private uint _textureHeight;
     private uint _bitsPerPixel;
@@ -414,6 +416,8 @@ internal sealed class DX12Engine {
     private uint _uploadResourceRowSize;
     private uint _uploadResourceSize;
 
+    private uint _srvDescriptorSize;
+
     private ID3D12Resource _uploadVertexResource;
     private ID3D12Resource _uploadIndexResource;
     private ID3D12Resource _defaultVertexResource;
@@ -422,9 +426,10 @@ internal sealed class DX12Engine {
     private D3D12_VERTEX_BUFFER_VIEW _vertexBufferView;
     private D3D12_INDEX_BUFFER_VIEW _indexBufferView;
 
+    private readonly Camera _firstCamera = new();
     private struct CBuffer {
         internal Matrix4x4 MVPMatrix;
-        internal Buffer512<Matrix4x4> BoneTransformMatrix;
+        internal Buffer768<Matrix4x4> BoneTransformMatrix;
     }
     private ID3D12Resource _cbvResource;
     private nint _mvpBuffer;
@@ -437,10 +442,7 @@ internal sealed class DX12Engine {
     private static readonly PCSTR BlendIndices = CreatePCSTR("BLENDINDICES");
     private static readonly PCSTR BlendWeight = CreatePCSTR("BLENDWEIGHT");
 
-    private ID3D12PipelineState _pipelineStateObject;
-    private ID3D12PipelineState _pipelineStateObjectDoubleSided;
-
-    private readonly Camera _firstCamera = new();
+    private ID3D12PipelineState _modelPSO;
 
     private D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
@@ -456,6 +458,47 @@ internal sealed class DX12Engine {
         right = WindowWidth,
         bottom = WindowHeight
     };
+
+
+    private int _animationCount;
+    private int _animationIndex;
+    private double _animeTPS;
+    private double _animeDuration;
+    private double _animeTime;
+    private long _recordedTime;
+    private long _currentTime;
+
+    private readonly List<Matrix4x4> _boneNodeAnimationTransformGroup = [];
+
+    private readonly Dictionary<string, Matrix4x4> _animeNodeSQTMatrixGroup = [];
+
+
+    private const string HDRMapFilePath = "autumn_field_puresky_1k.hdr";
+
+    private int _hdrMapWidth;
+    private int _hdrMapHeight;
+    private int _hdrMapChannelsNum;
+    private nint _hdrMapData;
+    private DXGI_FORMAT _hdrMapFormat;
+    private uint _hdrMapBitsPerPixel;
+
+    private ComPtr<ID3D12Resource> _hdrTextureMap;
+    private ComPtr<ID3D12Resource> _hdrTextureUploadMap;
+
+    private D3D12_CPU_DESCRIPTOR_HANDLE _hdrMapSRVCPUHandle;
+    private D3D12_GPU_DESCRIPTOR_HANDLE _hdrMapSRVGPUHandle;
+
+
+    private ComPtr<ID3D12Resource> _skyBoxVertexResource;
+    private ComPtr<ID3D12Resource> _skyBoxIndexResource;
+    private D3D12_VERTEX_BUFFER_VIEW _skyBoxVBV;
+    private D3D12_INDEX_BUFFER_VIEW _skyBoxIBV;
+
+    private ID3D12PipelineState _skyBoxPSO;
+
+    private ID3D12Resource _skyBoxCBResource;
+    private nint _skyBoxCBuffer;
+
 
     private unsafe void STEP1_InitWindow(SafeHandle hInstance) {
         const string className = "DX12 Game";
@@ -477,7 +520,7 @@ internal sealed class DX12Engine {
         _hwnd = CreateWindowEx(
             0,
             className,
-            "DX12 Game Window",
+            "Q版阿库娅 -- Static Pose 静态姿态",
             WINDOW_STYLE.WS_SYSMENU | WINDOW_STYLE.WS_OVERLAPPED,
             10,
             10,
@@ -497,6 +540,9 @@ internal sealed class DX12Engine {
 
         D3D12GetDebugInterface(out _d3d12DebugDevice).ThrowOnFailure();
         _d3d12DebugDevice.EnableDebugLayer();
+
+        var debug3 = _d3d12DebugDevice as ID3D12Debug3;
+        debug3.SetEnableGPUBasedValidation(true);
 
         _dxgiCreateFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
     }
@@ -697,20 +743,23 @@ internal sealed class DX12Engine {
                 var mt = new Material() {
                     Type = TextureType.NONE,
                 };
-
-                if (GetMaterialColor(material, _AI_MATKEY_COLOR_EMISSIVE_BASE, 0, 0, out var color) == ReturnCode.SUCCESS) {
-                    mt.Color = color;
-                } else if (GetMaterialColor(material, _AI_MATKEY_COLOR_DIFFUSE_BASE, 0, 0, out color) == ReturnCode.SUCCESS) {
-                    mt.Color = color;
-                } else {
-                    mt.Color = new(1, 1, 1, 1);
-                }
-
                 _materialGroup.Add(mt);
             }
 
-            if (GetMaterialInteger(material, _AI_MATKEY_TWOSIDED_BASE, 0, 0, out var twosided) == ReturnCode.SUCCESS && twosided > 0) {
-                _materialGroup[^1].DoubleSided = true;
+            if (GetMaterialColor(material, _AI_MATKEY_COLOR_DIFFUSE_BASE, 0, 0, out var diffuseAlbedo) == ReturnCode.SUCCESS) {
+                _materialGroup[^1].CBufferData.DiffuseAlbedoLight = diffuseAlbedo;
+            } else {
+                _materialGroup[^1].CBufferData.DiffuseAlbedoLight = new Vector4(1, 1, 1, 1);
+            }
+
+            if (GetMaterialColor(material, _AI_MATKEY_COLOR_SPECULAR_BASE, 0, 0, out var specular) == ReturnCode.SUCCESS) {
+                _materialGroup[^1].CBufferData.SpecularLight = specular;
+            } else {
+                _materialGroup[^1].CBufferData.SpecularLight = new Vector4(1, 1, 1, 1);
+            }
+
+            if (GetMaterialFloat(material, _AI_MATKEY_SHININESS_BASE, 0, 0, out var glossiness) == ReturnCode.SUCCESS) {
+                _materialGroup[^1].CBufferData.Glossiness = glossiness;
             }
         }
     }
@@ -741,6 +790,8 @@ internal sealed class DX12Engine {
     private void STEP12_AddModelData() {
         ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
+        _animationCount = (int)modelScene.mNumAnimations;
+
         var modelMatrix = Matrix4x4.Identity;
 
         CalcModelNodeMatrix(modelScene.RootNode, modelMatrix);
@@ -754,16 +805,15 @@ internal sealed class DX12Engine {
             if (mesh.mNumVertices == 0)
                 continue;
 
-
             for (int j = 0; j < mesh.mNumVertices; j++) {
                 var newVertex = new Vertex {
-                    Position = new(mesh.Vertices[j], 1.0f)
+                    Position = new(mesh.Vertices[j], 1.0f),
                 };
 
-                // 无纹理材质强制采样默认纹理中心，忽略模型原始 UV（原始 UV 可能超出 [0,1]，BORDER 模式会采到透明黑色）
-                if (_materialGroup[(int)mesh.mMaterialIndex].Type == TextureType.NONE) {
-                    newVertex.TexCoordUV = new(0.5f, 0.5f);
-                } else if (mesh.HasTextureCoords(0)) {
+                // 新节点纹理 UV，如果有就添加，没有就默认 (-1, -1)
+                // 注意这个 0 指的是第 0 号 UV 通道 (详情请见 UE5 文档: UV 通道)
+                // 对于同一个顶点，不同的 UV 通道可以有不同的 UV 坐标，常用于光照，但我们这里不涉及，直接获取第 0 号纹理 UV 即可
+                if (mesh.HasTextureCoords(0)) {
                     newVertex.TexCoordUV = new(mesh.TextureCoords(0)[j].x, mesh.TextureCoords(0)[j].y);
                 } else {
                     newVertex.TexCoordUV = new(-1.0f, -1.0f); // 默认纹理 UV 坐标，Pixel Shader 会进行处理
@@ -871,11 +921,12 @@ internal sealed class DX12Engine {
 
         _firstCamera.SetFocusPosition(centerPoint);
         _firstCamera.SetEyePosition(centerPoint with { Z = centerPoint.Z - radius });
+
     }
 
     private void CreateSRVHeap() {
         var srvHeapDesc = new D3D12_DESCRIPTOR_HEAP_DESC() {
-            NumDescriptors = (uint)_materialGroup.Count,
+            NumDescriptors = (uint)(_materialGroup.Count + 1),
             Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
             Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
         };
@@ -914,7 +965,6 @@ internal sealed class DX12Engine {
 
         if (DX12TextureHelper.GetTargetPixelFormat(pixelFormat, out var targetFormat)) {
             _textureFormat = DX12TextureHelper.GetDXGIFormatFromPixelFormat(targetFormat); // 获取 DX12 支持的格式
-            _shader4ComponentMapping = DX12TextureHelper.GetShader4ComponentMapping(targetFormat);
         } else {
             MessageBox(default, "此纹理不受支持!", "提示", MESSAGEBOX_STYLE.MB_OK);
             return false;
@@ -1074,7 +1124,6 @@ internal sealed class DX12Engine {
 
         // 注意！默认纹理的纹理格式要选 DXGI_FORMAT_R8G8B8A8_UNORM！
         _textureFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-        _shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
         var defaultResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
@@ -1102,17 +1151,11 @@ internal sealed class DX12Engine {
     private unsafe void CopyDefaultTextureToDefaultResource(int index) {
         Span<byte> defaultTextureData = stackalloc byte[2 * 2 * 4];
 
-        var color = _materialGroup[index].Color;
-        byte r = (byte)(Math.Clamp(color.X, 0f, 1f) * 255);
-        byte g = (byte)(Math.Clamp(color.Y, 0f, 1f) * 255);
-        byte b = (byte)(Math.Clamp(color.Z, 0f, 1f) * 255);
-        byte a = (byte)(Math.Clamp(color.W, 0f, 1f) * 255);
-
         for (int i = 0; i < 2 * 2; i++) {
-            defaultTextureData[i * 4 + 0] = r; // R
-            defaultTextureData[i * 4 + 1] = g; // G
-            defaultTextureData[i * 4 + 2] = b; // B
-            defaultTextureData[i * 4 + 3] = a; // A
+            defaultTextureData[i * 4 + 0] = 255; // R
+            defaultTextureData[i * 4 + 1] = 255; // G
+            defaultTextureData[i * 4 + 2] = 255; // B
+            defaultTextureData[i * 4 + 3] = 128; // A
         }
 
         _materialGroup[index].UploadTexture.Managed.Map(0, null, out var transferPointer);
@@ -1158,7 +1201,7 @@ internal sealed class DX12Engine {
         var srvDescriptorDesc = new D3D12_SHADER_RESOURCE_VIEW_DESC() {
             ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
             Format = _textureFormat,
-            Shader4ComponentMapping = _shader4ComponentMapping,
+            Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             Anonymous = new() { Texture2D = new() { MipLevels = 1 } },
         };
 
@@ -1184,7 +1227,18 @@ internal sealed class DX12Engine {
 
         var currentCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
         var currentGPUHandle = _srvHeap.GetGPUDescriptorHandleForHeapStart();
-        var srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        _srvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+        // 纹理从 Upload 堆复制到 Default 堆后，需要从 COPY_DEST 转换到 PIXEL_SHADER_RESOURCE 才能在 PS 阶段使用
+        var barrier = new D3D12_RESOURCE_BARRIER {
+            Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            Anonymous = new() {
+                Transition = new() {
+                    StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                    StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+                }
+            }
+        };
 
         StartCommandRecord();
 
@@ -1200,19 +1254,11 @@ internal sealed class DX12Engine {
 
             CreateSRV(i, currentCPUHandle, currentGPUHandle);
 
-            currentCPUHandle.ptr += srvDescriptorSize;
-            currentGPUHandle.ptr += srvDescriptorSize;
-        }
-
-        // 纹理复制完成后，将所有纹理从 COPY_DEST 转换为 PIXEL_SHADER_RESOURCE
-        for (var i = 0; i < _materialGroup.Count; i++) {
-            var barrier = new D3D12_RESOURCE_BARRIER {
-                Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            };
             barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
-            barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-            barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             _commandList.ResourceBarrier([barrier]);
+
+            currentCPUHandle.ptr += _srvDescriptorSize;
+            currentGPUHandle.ptr += _srvDescriptorSize;
         }
 
         StartCommandExecute();
@@ -1335,16 +1381,16 @@ internal sealed class DX12Engine {
 
         StartCommandExecute();
 
-        // 下一个等待就是 RenderLoop 的 MsgWaitForMultipleObjects，不需要用 WaitForSingleObject 了
+        WaitForSingleObject(_renderEvent, INFINITE);
     }
 
     private unsafe void STEP18_CreateCBVResource() {
-        uint cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        uint cBufferWidth = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
             Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            Width = cBufferSize,
+            Width = cBufferWidth,
             Height = 1,
             Format = DXGI_FORMAT_UNKNOWN,
             DepthOrArraySize = 1,
@@ -1364,10 +1410,21 @@ internal sealed class DX12Engine {
 
         _cbvResource.Map(0, null, out var cbvPointer);
         _mvpBuffer = (nint)cbvPointer;
+
     }
 
     private unsafe void STEP19_CreateRootSignature() {
-        var rootParameters = stackalloc D3D12_ROOT_PARAMETER[2];
+
+        // 根参数 + 静态采样器列表
+        // Para 0: (Type = Root Descriptor,  2 DWORD)  (b0, space0) CBV 根描述符，用于 MVP 与骨骼矩阵
+        // Para 1: (Type = Root Descriptor,  2 DWORD)  (b1, space0) CBV 根描述符，用于天空盒 
+        // Para 2: (Type = Descriptor Table, 1 DWORD)  (t0, space0) SRV 描述符表，用于模型纹理或天空盒
+        // 
+        // Sampler 0: (Type = Static Sampler) (s0, space0) 静态采样器 (邻近点过滤)，用于模型纹理采样
+        // Sampler 1: (Type = Static Sampler) (s1, space0) 静态采样器 (线性过滤)，用于天空盒纹理采样
+
+
+        var rootParameters = stackalloc D3D12_ROOT_PARAMETER[3];
 
         // 把更新频率高的根参数放前面，低的放后面，可以优化性能 (微软官方文档建议)
         // 因为 DirectX API 能对根签名进行 Version Control 版本控制，在根签名越前面的根参数，访问速度更快
@@ -1384,6 +1441,18 @@ internal sealed class DX12Engine {
         };
 
 
+        var skyBoxCBVRoot = new D3D12_ROOT_DESCRIPTOR() {
+            ShaderRegister = 1,
+            RegisterSpace = 0,
+        };
+
+        rootParameters[1] = new D3D12_ROOT_PARAMETER() {
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+            ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
+            Anonymous = new() { Descriptor = skyBoxCBVRoot },
+        };
+
+
         var srvDescriptorDesc = new D3D12_DESCRIPTOR_RANGE() {
             RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
             NumDescriptors = 1,
@@ -1397,34 +1466,51 @@ internal sealed class DX12Engine {
             pDescriptorRanges = &srvDescriptorDesc,
         };
 
-        rootParameters[1] = new D3D12_ROOT_PARAMETER() {
+        rootParameters[2] = new D3D12_ROOT_PARAMETER() {
             ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
             ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
             Anonymous = new() { DescriptorTable = rootDescriptorTableDesc },
         };
 
 
-        var staticSamplerDesc = new D3D12_STATIC_SAMPLER_DESC() {
+        var staticSamplerDescs = stackalloc D3D12_STATIC_SAMPLER_DESC[2];
+
+        staticSamplerDescs[0] = new D3D12_STATIC_SAMPLER_DESC() {
             ShaderRegister = 0,
             RegisterSpace = 0,
             ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
-            Filter = D3D12_FILTER_ANISOTROPIC,
+            Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
             AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             MinLOD = 0.0f,
             MaxLOD = D3D12_FLOAT32_MAX,
             MipLODBias = 0,
-            MaxAnisotropy = 16,
+            MaxAnisotropy = 1,
+            ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
+        };
+
+        staticSamplerDescs[1] = new D3D12_STATIC_SAMPLER_DESC() {
+            ShaderRegister = 1,
+            RegisterSpace = 0,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+            Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+            AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+            MinLOD = 0.0f,
+            MaxLOD = D3D12_FLOAT32_MAX,
+            MipLODBias = 0,
+            MaxAnisotropy = 1,
             ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
         };
 
 
         var rootSignatureDesc = new D3D12_ROOT_SIGNATURE_DESC() {
-            NumParameters = 2,
+            NumParameters = 3,
             pParameters = rootParameters,
-            NumStaticSamplers = 1,
-            pStaticSamplers = &staticSamplerDesc,
+            NumStaticSamplers = 2,
+            pStaticSamplers = staticSamplerDescs,
             // 根签名标志，可以设置渲染管线不同阶段下的输入参数状态。注意这里！我们要从 IA 阶段输入顶点数据，所以要通过根签名，设置渲染管线允许从 IA 阶段读入数据
             Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
         };
@@ -1448,7 +1534,7 @@ internal sealed class DX12Engine {
         _rootSignature = new(rootSignature);
     }
 
-    private unsafe void STEP20_CreatePSO() {
+    private unsafe void STEP20_CreateModelPSO() {
         var psoDesc = new D3D12_GRAPHICS_PIPELINE_STATE_DESC();
 
         var inputLayoutDesc = new D3D12_INPUT_LAYOUT_DESC();
@@ -1590,16 +1676,528 @@ internal sealed class DX12Engine {
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleMask = uint.MaxValue;
 
-        _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObject);
+        _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _modelPSO);
+    }
 
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-        _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _pipelineStateObjectDoubleSided);
+    private unsafe bool STEP21_LoadHDRTextureMap() {
+
+        _hdrMapData = (nint)StbiLoadf(HDRMapFilePath, out _hdrMapWidth, out _hdrMapHeight, out _hdrMapChannelsNum, 0);
+
+        if (_hdrMapData == 0) {
+            MessageBox(default, $"无法加载此类型的环境贴图：{HDRMapFilePath}", "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
+            return false;
+        }
+
+        if (_hdrMapChannelsNum == 3) {
+            _hdrMapFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+        } else {
+            MessageBox(default, $"此环境贴图：{HDRMapFilePath} 不是三像素通道贴图，加载失败！", "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
+            return false;
+        }
+
+        _hdrMapBitsPerPixel = (uint)(_hdrMapChannelsNum * sizeof(float) * 8);
+
+        return true;
+    }
+
+    private void STEP22_CreateHDRMapResource() {
+
+        _bytesPerRowSize = (uint)((_hdrMapWidth * _hdrMapBitsPerPixel + 7) / 8);
+        _textureSize = (uint)(_bytesPerRowSize * _hdrMapHeight);
+        _uploadResourceRowSize = CeilToMultiple(_bytesPerRowSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+        _uploadResourceSize = (uint)(_uploadResourceRowSize * (_hdrMapHeight - 1) + _bytesPerRowSize);
+
+
+        var uploadResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Width = _uploadResourceSize,
+            Height = 1,
+            Format = DXGI_FORMAT_UNKNOWN,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1 },
+        };
+
+        _d3d12Device.CreateCommittedResource<ID3D12Resource>(
+            new() {
+                Type = D3D12_HEAP_TYPE_UPLOAD,
+            },
+            D3D12_HEAP_FLAG_NONE,
+            uploadResourceDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out var uploadTextureResource);
+        _hdrTextureUploadMap = new(uploadTextureResource);
+
+        var defaultResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+            Width = (ulong)_hdrMapWidth,
+            Height = (uint)_hdrMapHeight,
+            Format = _hdrMapFormat,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1 },
+        };
+
+        _d3d12Device.CreateCommittedResource<ID3D12Resource>(
+            new() {
+                Type = D3D12_HEAP_TYPE_DEFAULT,
+            },
+            D3D12_HEAP_FLAG_NONE,
+            defaultResourceDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            null,
+            out var defaultTextureResource);
+        _hdrTextureMap = new(defaultTextureResource);
+    }
+
+    private unsafe void STEP23_CopyHDRResource() {
+
+        _hdrTextureUploadMap.Managed.Map(0, null, out var transferPointer);
+
+        int rowBytes = (int)_bytesPerRowSize;
+        ReadOnlySpan<byte> allSrcData = new((void*)_hdrMapData, rowBytes * _hdrMapHeight);
+        byte* dstBasePtr = (byte*)transferPointer;
+        for (int i = 0; i < _hdrMapHeight; i++) {
+            var srcRow = allSrcData.Slice(i * rowBytes, rowBytes);
+            var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
+            srcRow.CopyTo(dstRow);
+        }
+
+        _hdrTextureUploadMap.Managed.Unmap(0, default(D3D12_RANGE?));
+
+        var placedFootprint = new D3D12_PLACED_SUBRESOURCE_FOOTPRINT();
+        var defaultResourceDesc = _hdrTextureMap.Managed.GetDesc();
+
+        _d3d12Device.GetCopyableFootprints(
+            defaultResourceDesc,
+            0,
+            0,
+            new(ref placedFootprint));
+
+        var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
+            Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            Anonymous = new() { SubresourceIndex = 0 },
+            pResource = (ID3D12Resource_unmanaged*)_hdrTextureMap.Ptr,
+        };
+
+        var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
+            Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            Anonymous = new() { PlacedFootprint = placedFootprint },
+            pResource = (ID3D12Resource_unmanaged*)_hdrTextureUploadMap.Ptr,
+        };
+
+        StartCommandRecord();
+
+        _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
+
+        var hdrBarrier = new D3D12_RESOURCE_BARRIER {
+            Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            Anonymous = new() {
+                Transition = new() {
+                    pResource = (ID3D12Resource_unmanaged*)_hdrTextureMap.Ptr,
+                    StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+                    StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                }
+            }
+        };
+        _commandList.ResourceBarrier([hdrBarrier]);
+
+        StartCommandExecute();
+
+        // 下一个等待就是 RenderLoop 的 MsgWaitForMultipleObjects，不需要用 WaitForSingleObject 了
+    }
+
+    private void STEP24_CreateHDRMapSRV() {
+
+        _hdrMapSRVCPUHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
+        _hdrMapSRVCPUHandle.ptr += (nuint)(_materialGroup.Count * _srvDescriptorSize);
+        _hdrMapSRVGPUHandle = _srvHeap.GetGPUDescriptorHandleForHeapStart();
+        _hdrMapSRVGPUHandle.ptr += (nuint)(_materialGroup.Count * _srvDescriptorSize);
+
+        var srvDescriptorDesc = new D3D12_SHADER_RESOURCE_VIEW_DESC() {
+            ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+            Format = _hdrMapFormat,
+            Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            Anonymous = new() { Texture2D = new() { MipLevels = 1 } },
+        };
+
+        _d3d12Device.CreateShaderResourceView(_hdrTextureMap.Managed, srvDescriptorDesc, _hdrMapSRVCPUHandle);
+    }
+
+
+    private unsafe void STEP25_CreateSkyBoxAndResource() {
+        Span<Vector4> skyBoxVertexData = [
+            new(-1, 1, 1, 1),
+            new(-1, -1, 1, 1),
+            new(1, 1, 1, 1),
+            new(1, -1, 1, 1),
+        ];
+
+        Span<uint> skyBoxIndexData = [0, 1, 2, 1, 2, 3];
+
+        var skyBoxVertexUploadDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Format = DXGI_FORMAT_UNKNOWN,
+            Width = (ulong)(Unsafe.SizeOf<Vector4>() * skyBoxVertexData.Length),
+            Height = 1,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1, Quality = 0 },
+        };
+
+        var uploadHeapProperties = new D3D12_HEAP_PROPERTIES() {
+            Type = D3D12_HEAP_TYPE_UPLOAD,
+        };
+
+        _d3d12Device.CreateCommittedResource<ID3D12Resource>(
+            uploadHeapProperties,
+            D3D12_HEAP_FLAG_NONE,
+            skyBoxVertexUploadDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out var vertexResource);
+        _skyBoxVertexResource = new(vertexResource);
+
+        var skyBoxIndexUploadDesc = skyBoxVertexUploadDesc with {
+            Width = (ulong)(sizeof(uint) * skyBoxIndexData.Length),
+        };
+
+        _d3d12Device.CreateCommittedResource<ID3D12Resource>(
+            uploadHeapProperties,
+            D3D12_HEAP_FLAG_NONE,
+            skyBoxIndexUploadDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out var indexResource);
+        _skyBoxIndexResource = new(indexResource);
+
+
+        _skyBoxVertexResource.Managed.Map(0, null, out var vertexPointer);
+        skyBoxVertexData.CopyTo(new(vertexPointer, skyBoxVertexData.Length));
+        _skyBoxVertexResource.Managed.Unmap(0, default(D3D12_RANGE?));
+
+        _skyBoxIndexResource.Managed.Map(0, null, out var indexPointer);
+        skyBoxIndexData.CopyTo(new(indexPointer, skyBoxIndexData.Length));
+        _skyBoxIndexResource.Managed.Unmap(0, default(D3D12_RANGE?));
+
+
+        _skyBoxVBV.BufferLocation = _skyBoxVertexResource.Managed.GetGPUVirtualAddress();
+        _skyBoxVBV.SizeInBytes = (uint)(Unsafe.SizeOf<Vector4>() * skyBoxVertexData.Length);
+        _skyBoxVBV.StrideInBytes = (uint)Unsafe.SizeOf<Vector4>();
+
+        _skyBoxIBV.BufferLocation = _skyBoxIndexResource.Managed.GetGPUVirtualAddress();
+        _skyBoxIBV.SizeInBytes = (uint)(sizeof(uint) * skyBoxIndexData.Length);
+        _skyBoxIBV.Format = DXGI_FORMAT_R32_UINT;
+    }
+
+    private unsafe void STEP26_CreateSkyBoxPSO() {
+        var skyBoxPSODesc = new D3D12_GRAPHICS_PIPELINE_STATE_DESC();
+
+        var inputLayoutDesc = new D3D12_INPUT_LAYOUT_DESC();
+        var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[1];
+
+        inputElementDesc[0] = new() {
+            SemanticName = Position,
+            SemanticIndex = 0,
+            Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+            InputSlot = 0,
+            AlignedByteOffset = 0,
+            InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            InstanceDataStepRate = 0,
+        };
+
+        inputLayoutDesc.NumElements = 1;
+        inputLayoutDesc.pInputElementDescs = inputElementDesc;
+        skyBoxPSODesc.InputLayout = inputLayoutDesc;
+
+
+        D3DCompileFromFile(
+            "SkyBoxShader.hlsl",
+            null,
+            null,
+            "VSMain",
+            "vs_5_1",
+#if DEBUG
+            D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+#else
+            0,
+#endif
+            0,
+            out var vertexShaderBlob,
+            out var errorBlobVS);
+
+        if (errorBlobVS != null) {
+            var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobVS.GetBufferPointer());
+            Debug.WriteLine(errorMessage);
+        }
+
+        D3DCompileFromFile(
+            "SkyBoxShader.hlsl",
+            null,
+            null,
+            "PSMain",
+            "ps_5_1",
+#if DEBUG
+            D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+#else
+            0,
+#endif
+            0,
+            out var pixelShaderBlob,
+            out var errorBlobPS);
+
+        if (errorBlobPS != null) {
+            var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlobPS.GetBufferPointer());
+            Debug.WriteLine(errorMessage);
+        }
+
+        skyBoxPSODesc.VS = new() {
+            pShaderBytecode = vertexShaderBlob.GetBufferPointer(),
+            BytecodeLength = vertexShaderBlob.GetBufferSize(),
+        };
+        skyBoxPSODesc.PS = new() {
+            pShaderBytecode = pixelShaderBlob.GetBufferPointer(),
+            BytecodeLength = pixelShaderBlob.GetBufferSize(),
+        };
+
+        skyBoxPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        skyBoxPSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+
+        skyBoxPSODesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
+
+        skyBoxPSODesc.DepthStencilState.DepthEnable = false;
+        skyBoxPSODesc.BlendState.RenderTarget._0.BlendEnable = false;
+
+        skyBoxPSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        skyBoxPSODesc.NumRenderTargets = 1;
+        skyBoxPSODesc.RTVFormats._0 = DXGI_FORMAT_R8G8B8A8_UNORM;
+        skyBoxPSODesc.BlendState.RenderTarget._0.RenderTargetWriteMask = (byte)D3D12_COLOR_WRITE_ENABLE_ALL;
+        skyBoxPSODesc.SampleDesc.Count = 1;
+        skyBoxPSODesc.SampleMask = uint.MaxValue;
+
+        _d3d12Device.CreateGraphicsPipelineState(skyBoxPSODesc, out _skyBoxPSO);
+    }
+
+    private unsafe void STEP27_CreateSkyBoxConstantBuffer() {
+        uint cBufferWidth = CeilToMultiple((uint)Unsafe.SizeOf<Matrix4x4>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+
+        var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
+            Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            Width = cBufferWidth,
+            Height = 1,
+            Format = DXGI_FORMAT_UNKNOWN,
+            DepthOrArraySize = 1,
+            MipLevels = 1,
+            SampleDesc = new() { Count = 1 },
+        };
+
+        _d3d12Device.CreateCommittedResource(
+            new() {
+                Type = D3D12_HEAP_TYPE_UPLOAD,
+            },
+            D3D12_HEAP_FLAG_NONE,
+            cbvResourceDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            null,
+            out _skyBoxCBResource);
+
+        _skyBoxCBResource.Map(0, null, out var cbvPointer);
+        _skyBoxCBuffer = (nint)cbvPointer;
+    }
+
+    private void BeginAnimationRender() {
+        if (_animationIndex != 0) {
+            ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+
+            _recordedTime = _currentTime = Environment.TickCount64;
+
+            _animeTPS = modelScene.Animations[_animationIndex - 1].mTicksPerSecond;
+            _animeTPS = _animeTPS == 0 ? 30.0 : _animeTPS;
+
+            // 更新持续时间，注意 Assimp 的 mDuration 指的是该动画一共有多少动画帧，不是持续多少秒
+            // AnimeDuration (Seconds) = mDuration (Ticks) / TPS
+            _animeDuration = modelScene.Animations[_animationIndex - 1].mDuration / _animeTPS;
+
+            _animeTime = 0;
+
+
+            CollectionsMarshal.SetCount(_boneNodeAnimationTransformGroup, _boneNodeTransformGroup.Count);
+            CollectionsMarshal.AsSpan(_boneNodeAnimationTransformGroup).Fill(Matrix4x4.Identity);
+
+            _animeNodeSQTMatrixGroup.Clear();
+
+            SetWindowText(_hwnd, $"Q版阿库娅 -- 动画({_animationIndex}): {modelScene.Animations[_animationIndex - 1].mName}");
+        } else {
+            SetWindowText(_hwnd, "Q版阿库娅 -- Static Pose 静态姿态");
+        }
+    }
+
+    private Matrix4x4 CalcTickBoneMatrix(double animeTimeInTicks, in NodeAnim animeNode) {
+        Matrix4x4 boneAnimeTranslationMatrix;
+        Matrix4x4 boneAnimeRotationMatrix;
+        Matrix4x4 boneAnimeScalingMatrix;
+
+        if (animeNode.mNumPositionKeys == 1) {
+            boneAnimeTranslationMatrix = Matrix4x4.CreateTranslation(animeNode.PositionKeys[0].mValue);
+        } else {
+
+            int nextIndex = 1;
+
+            for (int i = 1; i < animeNode.mNumPositionKeys; i++) {
+                if (animeTimeInTicks < animeNode.PositionKeys[i].mTime) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+            Vector3 lastTickVec = animeNode.PositionKeys[nextIndex - 1].mValue;
+            Vector3 nextTickVec = animeNode.PositionKeys[nextIndex].mValue;
+
+            double deltaTime = animeNode.PositionKeys[nextIndex].mTime - animeNode.PositionKeys[nextIndex - 1].mTime;
+            double differ = animeTimeInTicks - animeNode.PositionKeys[nextIndex - 1].mTime;
+            double factor = differ / deltaTime;
+
+            boneAnimeTranslationMatrix = Matrix4x4.CreateTranslation(Vector3.Lerp(lastTickVec, nextTickVec, (float)factor));
+        }
+
+        if (animeNode.mNumRotationKeys == 1) {
+            boneAnimeRotationMatrix = Matrix4x4.CreateFromQuaternion(animeNode.RotationKeys[0].mValue);
+        } else {
+
+            int nextIndex = 1;
+
+            for (int i = 1; i < animeNode.mNumRotationKeys; i++) {
+                if (animeTimeInTicks < animeNode.RotationKeys[i].mTime) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+
+            Quaternion lastTickQuat = animeNode.RotationKeys[nextIndex - 1].mValue;
+            Quaternion nextTickQuat = animeNode.RotationKeys[nextIndex].mValue;
+
+            double deltaTime = animeNode.RotationKeys[nextIndex].mTime - animeNode.RotationKeys[nextIndex - 1].mTime;
+            double differ = animeTimeInTicks - animeNode.RotationKeys[nextIndex - 1].mTime;
+            double factor = differ / deltaTime;
+
+            var rotationQuaternion = Quaternion.Slerp(lastTickQuat, nextTickQuat, (float)factor);
+            boneAnimeRotationMatrix = Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(rotationQuaternion));
+        }
+
+
+        if (animeNode.mNumScalingKeys == 1) {
+            boneAnimeScalingMatrix = Matrix4x4.CreateScale(animeNode.ScalingKeys[0].mValue);
+        } else {
+
+            int nextIndex = 1;
+
+            for (int i = 1; i < animeNode.mNumScalingKeys; i++) {
+                if (animeTimeInTicks < animeNode.ScalingKeys[i].mTime) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+
+            Vector3 lastTickVec = animeNode.ScalingKeys[nextIndex - 1].mValue;
+            Vector3 nextTickVec = animeNode.ScalingKeys[nextIndex].mValue;
+
+            double deltaTime = animeNode.ScalingKeys[nextIndex].mTime - animeNode.ScalingKeys[nextIndex - 1].mTime;
+            double differ = animeTimeInTicks - animeNode.ScalingKeys[nextIndex - 1].mTime;
+            double factor = differ / deltaTime;
+
+            boneAnimeScalingMatrix = Matrix4x4.CreateScale(Vector3.Lerp(lastTickVec, nextTickVec, (float)factor));
+        }
+
+
+        // 将上述三个矩阵依次相乘，就能得到最终变换矩阵 (SQT 矩阵) 了，注意，顺序 (放缩 -> 旋转 -> 平移) 不能改变！
+        return boneAnimeScalingMatrix * boneAnimeRotationMatrix * boneAnimeTranslationMatrix;
+    }
+
+    private void UpdateAnimeNodeMatrix() {
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+
+        double animeTimeInTicks = _animeTime * _animeTPS;
+        foreach (ref var animeNode in modelScene.Animations[_animationIndex - 1].Channels) {
+            var boneName = animeNode.mNodeName.ToString();
+            _animeNodeSQTMatrixGroup[boneName] = CalcTickBoneMatrix(animeTimeInTicks, animeNode);
+        }
+    }
+
+    private void CalcAnimeModelNodeMatrix(in Node node, in Matrix4x4 parentNodeTransform) {
+
+        Matrix4x4 currentNodeTransform = node.mTransformation;
+
+        var boneName = node.mName.ToString();
+
+        if (_animeNodeSQTMatrixGroup.TryGetValue(boneName, out var nodeTransform)) {
+            currentNodeTransform = Matrix4x4.Transpose(nodeTransform);
+        }
+
+        var boneIndex = _boneNodeIndexGroup[boneName];
+
+        currentNodeTransform = parentNodeTransform * currentNodeTransform;
+        _boneNodeAnimationTransformGroup[boneIndex] = currentNodeTransform;
+
+        foreach (ref var childNode in node.Children) {
+            CalcAnimeModelNodeMatrix(childNode, currentNodeTransform);
+        }
+    }
+
+    private void TransformMeshToBoneFinalMatrix() {
+        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+        for (int i = 0; i < modelScene.mNumMeshes; i++) {
+            ref var mesh = ref modelScene.Meshes[i];
+
+            foreach (ref var currentBone in mesh.Bones) {
+
+                var boneIndex = _boneNodeIndexGroup[currentBone.mName.ToString()];
+                Matrix4x4 meshToBoneSpaceMatrix = currentBone.mOffsetMatrix;
+
+                var finalSkinnedMeshIndex = _boneNodeIndexGroup[$"_Mesh_{i}_To_Bone_{boneIndex}"];
+
+                _boneNodeAnimationTransformGroup[finalSkinnedMeshIndex] = _boneNodeAnimationTransformGroup[boneIndex] * meshToBoneSpaceMatrix;
+            }
+        }
     }
 
     private void UpdateConstantBuffer() {
-        ref var buffer = ref Unsafe.AsRef<CBuffer>(_mvpBuffer);
-        buffer.MVPMatrix = _firstCamera.MVPMatrix;
-        CollectionsMarshal.AsSpan(_boneNodeTransformGroup).CopyTo(buffer.BoneTransformMatrix);
+        ref var mvpBuffer = ref Unsafe.AsRef<CBuffer>(_mvpBuffer);
+        mvpBuffer.MVPMatrix = _firstCamera.MVPMatrix;
+
+        ref var skyBoxCBuffer = ref Unsafe.AsRef<Matrix4x4>(_skyBoxCBuffer);
+        skyBoxCBuffer = _firstCamera.InverseProjectionMatrix * _firstCamera.InverseViewMatrix;
+
+        if (_animationIndex == 0) {
+            CollectionsMarshal.AsSpan(_boneNodeTransformGroup).CopyTo(mvpBuffer.BoneTransformMatrix);
+        } else {
+            ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+
+            _currentTime = Environment.TickCount64;
+
+            _animeTime += (_currentTime - _recordedTime) / 1000.0;
+            _animeTime %= _animeDuration;
+
+            _recordedTime = _currentTime;
+
+            UpdateAnimeNodeMatrix();
+
+            CalcAnimeModelNodeMatrix(modelScene.RootNode, Matrix4x4.Identity);
+
+            TransformMeshToBoneFinalMatrix();
+
+            var boneNodeTransformGroupSpan = CollectionsMarshal.AsSpan(_boneNodeAnimationTransformGroup);
+            for (var i = 0; i < boneNodeTransformGroupSpan.Length; i++) {
+                boneNodeTransformGroupSpan[i] = Matrix4x4.Transpose(boneNodeTransformGroupSpan[i]);
+            }
+
+            boneNodeTransformGroupSpan.CopyTo(mvpBuffer.BoneTransformMatrix);
+        }
+
+
     }
 
     private unsafe void Render() {
@@ -1616,31 +2214,39 @@ internal sealed class DX12Engine {
         _beginBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_beginBarrier]);
 
-        _commandList.SetGraphicsRootSignature(_rootSignature.Managed);
-
         _commandList.RSSetViewports([_viewPort]);
         _commandList.RSSetScissorRects([_scissorRect]);
 
-        _commandList.OMSetRenderTargets(1, _rtvHandle, false, _dsvHandle);
-
         _commandList.ClearDepthStencilView(_dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0);
-
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue);
+        _commandList.OMSetRenderTargets(1, _rtvHandle, false, _dsvHandle);
 
         _commandList.SetDescriptorHeaps([_srvHeap]);
 
+        _commandList.SetGraphicsRootSignature(_rootSignature.Managed);
+
+        _commandList.SetPipelineState(_skyBoxPSO);
+        _commandList.SetGraphicsRootConstantBufferView(1, _skyBoxCBResource.GetGPUVirtualAddress());
+        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        _commandList.IASetVertexBuffers(0, [_skyBoxVBV]);
+        _commandList.IASetIndexBuffer(_skyBoxIBV);
+
+        _commandList.SetGraphicsRootDescriptorTable(2, _hdrMapSRVGPUHandle);
+        _commandList.DrawIndexedInstanced(6, 1, 0, 0, 0);
+
+        _commandList.SetPipelineState(_modelPSO);
+
         _commandList.SetGraphicsRootConstantBufferView(0, _cbvResource.GetGPUVirtualAddress());
 
-        _commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        //_commandList.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 
         _commandList.IASetVertexBuffers(0, [_vertexBufferView]);
         _commandList.IASetIndexBuffer(_indexBufferView);
 
         foreach (var mesh in _meshGroup) {
-            var mat = _materialGroup[mesh.MaterialIndex];
-            _commandList.SetPipelineState(mat.DoubleSided ? _pipelineStateObjectDoubleSided : _pipelineStateObject);
-            _commandList.SetGraphicsRootDescriptorTable(1, mat.GPUHandle);
+            _commandList.SetGraphicsRootDescriptorTable(2, _materialGroup[mesh.MaterialIndex].GPUHandle);
             _commandList.DrawIndexedInstanced(mesh.IndexCount, 1, mesh.IndexGroupOffset, mesh.VertexGroupOffset, 0);
         }
 
@@ -1659,7 +2265,7 @@ internal sealed class DX12Engine {
         _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
-    private void STEP21_RenderLoop() {
+    private void STEP28_RenderLoop() {
         bool exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
@@ -1718,6 +2324,16 @@ internal sealed class DX12Engine {
                     case 'D':
                         _firstCamera.Strafe(-0.2f);
                         break;
+
+                    case ' ':
+                        ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
+                        if (modelScene.HasAnimations()) {
+                            _animationIndex++;
+                            _animationIndex %= _animationCount + 1;
+                            BeginAnimationRender();
+
+                        }
+                        break;
                 }
                 break;
 
@@ -1765,9 +2381,18 @@ internal sealed class DX12Engine {
 
         engine.STEP18_CreateCBVResource();
         engine.STEP19_CreateRootSignature();
-        engine.STEP20_CreatePSO();
+        engine.STEP20_CreateModelPSO();
 
-        engine.STEP21_RenderLoop();
+        engine.STEP21_LoadHDRTextureMap();
+        engine.STEP22_CreateHDRMapResource();
+        engine.STEP23_CopyHDRResource();
+        engine.STEP24_CreateHDRMapSRV();
+
+        engine.STEP25_CreateSkyBoxAndResource();
+        engine.STEP26_CreateSkyBoxPSO();
+        engine.STEP27_CreateSkyBoxConstantBuffer();
+
+        engine.STEP28_RenderLoop();
     }
 
 }

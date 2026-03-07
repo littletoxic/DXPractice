@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<Content Include="aqua\**\*" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="autumn_field_puresky_1k.hdr" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="shader.hlsl" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="SkyBoxShader.hlsl" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="LittleToxic.AssimpMetadata" />
+		<PackageReference Include="LittleToxic.StbImageMetadata" />
+		<PackageReference Include="Microsoft.Windows.CsWin32">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+</Project>
