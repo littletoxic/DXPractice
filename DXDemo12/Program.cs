@@ -1434,7 +1434,7 @@ internal sealed class DX12Engine {
         };
 
         rootParameters[2] = new D3D12_ROOT_PARAMETER() {
-            ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+            ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
             ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
             Anonymous = new() { Constants = cbvRootConstantsDesc },
         };
