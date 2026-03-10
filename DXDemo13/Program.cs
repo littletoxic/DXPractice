@@ -1642,7 +1642,7 @@ internal sealed class DX12Engine {
             boneAnimeTranslationMatrix = Matrix4x4.CreateTranslation(animeNode.PositionKeys[0].mValue);
         } else {
 
-            int nextIndex = 1;
+            int nextIndex = (int)(animeNode.mNumPositionKeys - 1);
 
             for (int i = 1; i < animeNode.mNumPositionKeys; i++) {
                 if (animeTimeInTicks < animeNode.PositionKeys[i].mTime) {
@@ -1664,7 +1664,7 @@ internal sealed class DX12Engine {
             boneAnimeRotationMatrix = Matrix4x4.CreateFromQuaternion(animeNode.RotationKeys[0].mValue);
         } else {
 
-            int nextIndex = 1;
+            int nextIndex = (int)(animeNode.mNumRotationKeys - 1);
 
             for (int i = 1; i < animeNode.mNumRotationKeys; i++) {
                 if (animeTimeInTicks < animeNode.RotationKeys[i].mTime) {
@@ -1689,7 +1689,7 @@ internal sealed class DX12Engine {
             boneAnimeScalingMatrix = Matrix4x4.CreateScale(animeNode.ScalingKeys[0].mValue);
         } else {
 
-            int nextIndex = 1;
+            int nextIndex = (int)(animeNode.mNumScalingKeys - 1);
 
             for (int i = 1; i < animeNode.mNumScalingKeys; i++) {
                 if (animeTimeInTicks < animeNode.ScalingKeys[i].mTime) {
