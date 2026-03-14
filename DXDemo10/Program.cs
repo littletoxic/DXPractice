@@ -460,8 +460,8 @@ internal sealed class DX12Engine {
             // 找到显卡，就创建 D3D12 设备，从高到低遍历所有功能版本，创建成功就跳出
             foreach (var level in DX12SupportLevels) {
                 if (D3D12CreateDevice(_dxgiAdapter, level, out _d3d12Device).Succeeded) {
-                    var adap = _dxgiAdapter.GetDesc();
-                    Debug.WriteLine($"当前使用的显卡：{adap.Description}");
+                    var adapter = _dxgiAdapter.GetDesc();
+                    Debug.WriteLine($"当前使用的显卡：{adapter.Description}");
                     return true;
                 }
             }
