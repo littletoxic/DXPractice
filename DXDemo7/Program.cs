@@ -256,7 +256,7 @@ internal abstract class Model {
     }
 }
 
-internal abstract class SoildBlock : Model {
+internal abstract class SolidBlock : Model {
     protected static Vertex[] VertexArray = [
         // 正面
         new() { Position = new(0, 1, 0, 1), TexCoordUV = new(0, 0) },
@@ -373,7 +373,7 @@ internal abstract class SoildBlock : Model {
     }
 }
 
-internal abstract class SoildStair : Model {
+internal abstract class SolidStair : Model {
 
     protected static readonly Vertex[] VertexArray = [
         // 台阶底面
@@ -516,7 +516,7 @@ internal abstract class SoildStair : Model {
 
 }
 
-internal sealed class Dirt : SoildBlock {
+internal sealed class Dirt : SolidBlock {
 
     public Dirt() {
         _textureNameSet = ["dirt"];
@@ -532,7 +532,7 @@ internal sealed class Dirt : SoildBlock {
     }
 }
 
-internal sealed class PlanksOak : SoildBlock {
+internal sealed class PlanksOak : SolidBlock {
 
     public PlanksOak() {
         _textureNameSet = ["planks_oak"];
@@ -548,7 +548,7 @@ internal sealed class PlanksOak : SoildBlock {
     }
 }
 
-internal sealed class Furnace : SoildBlock {
+internal sealed class Furnace : SolidBlock {
 
     public Furnace() {
         _textureNameSet = ["furnace_front_off", "furnace_side", "furnace_top"];
@@ -572,7 +572,7 @@ internal sealed class Furnace : SoildBlock {
     }
 }
 
-internal sealed class CraftingTable : SoildBlock {
+internal sealed class CraftingTable : SolidBlock {
 
     public CraftingTable() {
         _textureNameSet = ["crafting_table_front", "crafting_table_side", "crafting_table_top"];
@@ -596,7 +596,7 @@ internal sealed class CraftingTable : SoildBlock {
     }
 }
 
-internal sealed class LogOak : SoildBlock {
+internal sealed class LogOak : SolidBlock {
 
     public LogOak() {
         _textureNameSet = ["log_oak", "log_oak_top"];
@@ -617,7 +617,7 @@ internal sealed class LogOak : SoildBlock {
     }
 }
 
-internal sealed class Grass : SoildBlock {
+internal sealed class Grass : SolidBlock {
 
     public Grass() {
         _textureNameSet = ["grass_side", "grass_top", "dirt"];
@@ -642,9 +642,9 @@ internal sealed class Grass : SoildBlock {
     }
 }
 
-internal sealed class PlanksOakSoildStair : SoildStair {
+internal sealed class PlanksOakSolidStair : SolidStair {
 
-    public PlanksOakSoildStair() {
+    public PlanksOakSolidStair() {
         _textureNameSet = ["planks_oak"];
     }
 
@@ -858,22 +858,22 @@ internal sealed class ModelManager {
             };
             _modelGroup.Add(plank);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 2, 1)
             };
             _modelGroup.Add(stair);
 
-            stair = new PlanksOakSoildStair {
+            stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 2, 1)
             };
             _modelGroup.Add(stair);
 
-            stair = new PlanksOakSoildStair {
+            stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 1, 0)
             };
             _modelGroup.Add(stair);
 
-            stair = new PlanksOakSoildStair {
+            stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 1, 0)
             };
             _modelGroup.Add(stair);
@@ -893,7 +893,7 @@ internal sealed class ModelManager {
 
         // 第一层
         for (int x = 3; x < 7; x++) {
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 6, 1)
             };
             _modelGroup.Add(stair);
@@ -910,7 +910,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);         // 旋转完再还原
             transform *= Matrix4x4.CreateTranslation(x, 6, 8);                  // 再平移到对应的坐标
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _modelGroup.Add(stair);
@@ -922,7 +922,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(1, 6, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _modelGroup.Add(stair);
@@ -934,7 +934,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(8, 6, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _modelGroup.Add(stair);
@@ -942,7 +942,7 @@ internal sealed class ModelManager {
 
         // 第二层
         for (int x = 3; x < 7; x++) {
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 7, 2)
             };
             _modelGroup.Add(stair);
@@ -954,7 +954,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(x, 7, 7);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _modelGroup.Add(stair);
@@ -966,7 +966,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(2, 7, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _modelGroup.Add(stair);
@@ -978,7 +978,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(7, 7, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _modelGroup.Add(stair);
@@ -1077,10 +1077,10 @@ internal sealed class DX12Engine {
 
     // DSV 资源的格式
     // 深度模板缓冲只支持四种格式:
-    // DXGI_FORMAT_D24_UNORM_S8_UINT	(每个像素占用四个字节 32 位，24 位无符号归一化浮点数留作深度值，8 位整数留作模板值)
-    // DXGI_FORMAT_D32_FLOAT_S8X24_UINT	(每个像素占用八个字节 64 位，32 位浮点数留作深度值，8 位整数留作模板值，其余 24 位保留不使用)
-    // DXGI_FORMAT_D16_UNORM			(每个像素占用两个字节 16 位，16 位无符号归一化浮点数留作深度值，范围 [0,1]，不使用模板)
-    // DXGI_FORMAT_D32_FLOAT			(每个像素占用四个字节 32 位，32 位浮点数留作深度值，不使用模板)
+    // DXGI_FORMAT_D24_UNORM_S8_UINT    (每个像素占用四个字节 32 位，24 位无符号归一化浮点数留作深度值，8 位整数留作模板值)
+    // DXGI_FORMAT_D32_FLOAT_S8X24_UINT    (每个像素占用八个字节 64 位，32 位浮点数留作深度值，8 位整数留作模板值，其余 24 位保留不使用)
+    // DXGI_FORMAT_D16_UNORM            (每个像素占用两个字节 16 位，16 位无符号归一化浮点数留作深度值，范围 [0,1]，不使用模板)
+    // DXGI_FORMAT_D32_FLOAT            (每个像素占用四个字节 32 位，32 位浮点数留作深度值，不使用模板)
     // 这里我们选择最常用的格式 DXGI_FORMAT_D24_UNORM_S8_UINT
     private const DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
@@ -1184,7 +1184,7 @@ internal sealed class DX12Engine {
             foreach (var level in DX12SupportLevels) {
                 if (D3D12CreateDevice(_dxgiAdapter, level, out _d3d12Device).Succeeded) {
                     var adap = _dxgiAdapter.GetDesc();
-                    Debug.WriteLine(adap.Description.ToString());
+                    Debug.WriteLine($"当前使用的显卡：{adap.Description}");
                     return true;
                 }
             }
@@ -1255,7 +1255,7 @@ internal sealed class DX12Engine {
             _dxgiSwapChain.GetBuffer<ID3D12Resource>(i, out var resource);
             _renderTargets[i] = new(resource);
 
-            _d3d12Device.CreateRenderTargetView(_renderTargets[i].Managed, default(D3D12_RENDER_TARGET_VIEW_DESC?), DestDescriptor: _rtvHandle);
+            _d3d12Device.CreateRenderTargetView(_renderTargets[i].Managed, default(D3D12_RENDER_TARGET_VIEW_DESC?), _rtvHandle);
 
             _rtvHandle.ptr += _rtvDescriptorSize;
         }
@@ -1365,7 +1365,7 @@ internal sealed class DX12Engine {
                textureFilename,
                null,
                GENERIC_ACCESS_RIGHTS.GENERIC_READ,
-               WICDecodeOptions.WICDecodeMetadataCacheOnLoad);
+               WICDecodeOptions.WICDecodeMetadataCacheOnDemand);
         } catch (Exception ex) {
             MessageBox(default, ex.Message, "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
             return false;
@@ -1474,10 +1474,9 @@ internal sealed class DX12Engine {
         info.UploadHeapTextureResource.Managed.Map(0, null, out var transferPointer);
 
         int rowBytes = (int)_bytesPerRowSize;
-        ReadOnlySpan<byte> allSrcData = textureData;
         byte* dstBasePtr = (byte*)transferPointer;
         for (int i = 0; i < _textureHeight; i++) {
-            var srcRow = allSrcData.Slice(i * rowBytes, rowBytes);
+            var srcRow = textureData.AsSpan().Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
         }
@@ -1636,7 +1635,7 @@ internal sealed class DX12Engine {
             ShaderRegister = 0,
             RegisterSpace = 0,
             ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
-            Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+            Filter = D3D12_FILTER_MIN_MAG_MIP_POINT,
             AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
@@ -1661,7 +1660,7 @@ internal sealed class DX12Engine {
             rootSignatureDesc,
             D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
-            out var errorBlob).ThrowOnFailure();
+            out var errorBlob);
 
         if (errorBlob != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlob.GetBufferPointer());
@@ -1894,7 +1893,7 @@ internal sealed class DX12Engine {
                 break;
 
             case WM_CHAR:
-                var ch = (char)wParam;
+                var ch = (char)(nuint)wParam;
                 switch (ch) {
                     case 'w':
                     case 'W':

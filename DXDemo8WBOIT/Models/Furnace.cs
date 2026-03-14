@@ -3,7 +3,7 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal sealed class Furnace : SoildBlock {
+internal sealed class Furnace : SolidBlock {
 
     public Furnace() {
         _textureNameSet = ["furnace_front_off", "furnace_side", "furnace_top"];

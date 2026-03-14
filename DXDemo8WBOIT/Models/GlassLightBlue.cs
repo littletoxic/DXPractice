@@ -3,7 +3,7 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal sealed class GlassLightBlue : SoildBlock {
+internal sealed class GlassLightBlue : SolidBlock {
     public GlassLightBlue() {
         _textureNameSet = ["glass_light_blue"];
     }

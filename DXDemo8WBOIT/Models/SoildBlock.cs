@@ -5,7 +5,7 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal abstract class SoildBlock : Model {
+internal abstract class SolidBlock : Model {
     protected static readonly Vertex[] VertexArray = [
         // 正面
         new() { Position = new(0, 1, 0, 1), TexCoordUV = new(0, 0) },

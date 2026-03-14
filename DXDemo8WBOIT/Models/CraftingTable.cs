@@ -3,7 +3,7 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal sealed class CraftingTable : SoildBlock {
+internal sealed class CraftingTable : SolidBlock {
 
     public CraftingTable() {
         _textureNameSet = ["crafting_table_front", "crafting_table_side", "crafting_table_top"];

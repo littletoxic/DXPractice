@@ -3,7 +3,7 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal sealed class Grass : SoildBlock {
+internal sealed class Grass : SolidBlock {
 
     public Grass() {
         _textureNameSet = ["grass_side", "grass_top", "dirt"];

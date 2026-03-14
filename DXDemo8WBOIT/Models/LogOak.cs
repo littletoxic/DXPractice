@@ -3,7 +3,7 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal sealed class LogOak : SoildBlock {
+internal sealed class LogOak : SolidBlock {
 
     public LogOak() {
         _textureNameSet = ["log_oak", "log_oak_top"];

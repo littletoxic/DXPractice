@@ -5,7 +5,7 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal abstract class SoildStair : Model {
+internal abstract class SolidStair : Model {
 
     protected static readonly Vertex[] VertexArray = [
         // 台阶底面

@@ -262,7 +262,7 @@ internal sealed class DX12Engine {
             foreach (var level in DX12SupportLevels) {
                 if (D3D12CreateDevice(_dxgiAdapter, level, out _d3d12Device).Succeeded) {
                     var adap = _dxgiAdapter.GetDesc();
-                    Debug.WriteLine(adap.Description.ToString());
+                    Debug.WriteLine($"当前使用的显卡：{adap.Description}");
                     return true;
                 }
             }
@@ -333,7 +333,7 @@ internal sealed class DX12Engine {
             _dxgiSwapChain.GetBuffer<ID3D12Resource>(i, out var resource);
             _renderTargets[i] = new(resource);
 
-            _d3d12Device.CreateRenderTargetView(_renderTargets[i].Managed, default(D3D12_RENDER_TARGET_VIEW_DESC?), DestDescriptor: _rtvHandle);
+            _d3d12Device.CreateRenderTargetView(_renderTargets[i].Managed, default(D3D12_RENDER_TARGET_VIEW_DESC?), _rtvHandle);
 
             _rtvHandle.ptr += _rtvDescriptorSize;
         }
@@ -370,7 +370,7 @@ internal sealed class DX12Engine {
                TextureFilename,
                null,
                GENERIC_ACCESS_RIGHTS.GENERIC_READ,
-               WICDecodeOptions.WICDecodeMetadataCacheOnLoad);
+               WICDecodeOptions.WICDecodeMetadataCacheOnDemand);
         } catch (Exception ex) {
             MessageBox(default, ex.Message, "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
             return false;
@@ -488,10 +488,9 @@ internal sealed class DX12Engine {
         _uploadTextureResource.Managed.Map(0, null, out var transferPointer);
 
         int rowBytes = (int)_bytesPerRowSize;
-        ReadOnlySpan<byte> allSrcData = textureData;
         byte* dstBasePtr = (byte*)transferPointer;
         for (int i = 0; i < _textureHeight; i++) {
-            var srcRow = allSrcData.Slice(i * rowBytes, rowBytes);
+            var srcRow = textureData.AsSpan().Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
         }
@@ -617,7 +616,7 @@ internal sealed class DX12Engine {
             ShaderRegister = 0,
             RegisterSpace = 0,
             ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
-            Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+            Filter = D3D12_FILTER_MIN_MAG_MIP_POINT,
             AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
             AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER,
@@ -642,7 +641,7 @@ internal sealed class DX12Engine {
             rootSignatureDesc,
             D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
-            out var errorBlob).ThrowOnFailure();
+            out var errorBlob);
 
         if (errorBlob != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlob.GetBufferPointer());
@@ -740,14 +739,10 @@ internal sealed class DX12Engine {
             Debug.WriteLine(errorMessage);
         }
 
-        psoDesc.VS = new() {
-            pShaderBytecode = vertexShaderBlob.GetBufferPointer(),
-            BytecodeLength = vertexShaderBlob.GetBufferSize(),
-        };
-        psoDesc.PS = new() {
-            pShaderBytecode = pixelShaderBlob.GetBufferPointer(),
-            BytecodeLength = pixelShaderBlob.GetBufferSize(),
-        };
+        psoDesc.VS.pShaderBytecode = vertexShaderBlob.GetBufferPointer();
+        psoDesc.VS.BytecodeLength = vertexShaderBlob.GetBufferSize();
+        psoDesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
+        psoDesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
         psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;

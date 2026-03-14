@@ -256,7 +256,7 @@ internal sealed unsafe class DX12Engine {
             &rootSignatureDesc,
             D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
-            out var errorBlob).ThrowOnFailure();
+            out var errorBlob);
 
         if (errorBlob != null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlob.GetBufferPointer());
@@ -355,14 +355,10 @@ internal sealed unsafe class DX12Engine {
             Debug.WriteLine(errorMessage);
         }
 
-        psoDesc.VS = new() {
-            pShaderBytecode = vertexShaderBlob.GetBufferPointer(),
-            BytecodeLength = vertexShaderBlob.GetBufferSize(),
-        };
-        psoDesc.PS = new() {
-            pShaderBytecode = pixelShaderBlob.GetBufferPointer(),
-            BytecodeLength = pixelShaderBlob.GetBufferSize(),
-        };
+        psoDesc.VS.pShaderBytecode = vertexShaderBlob.GetBufferPointer();
+        psoDesc.VS.BytecodeLength = vertexShaderBlob.GetBufferSize();
+        psoDesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
+        psoDesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
         psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;

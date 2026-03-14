@@ -207,22 +207,22 @@ internal sealed class ModelManager {
             };
             _opaqueGroup.Add(plank);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 2, 1)
             };
             _opaqueGroup.Add(stair);
 
-            stair = new PlanksOakSoildStair {
+            stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 2, 1)
             };
             _opaqueGroup.Add(stair);
 
-            stair = new PlanksOakSoildStair {
+            stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(4, 1, 0)
             };
             _opaqueGroup.Add(stair);
 
-            stair = new PlanksOakSoildStair {
+            stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(5, 1, 0)
             };
             _opaqueGroup.Add(stair);
@@ -242,7 +242,7 @@ internal sealed class ModelManager {
 
         // 第一层
         for (int x = 3; x < 7; x++) {
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 6, 1)
             };
             _opaqueGroup.Add(stair);
@@ -259,7 +259,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);         // 旋转完再还原
             transform *= Matrix4x4.CreateTranslation(x, 6, 8);                  // 再平移到对应的坐标
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _opaqueGroup.Add(stair);
@@ -271,7 +271,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(1, 6, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _opaqueGroup.Add(stair);
@@ -283,7 +283,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(8, 6, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _opaqueGroup.Add(stair);
@@ -291,7 +291,7 @@ internal sealed class ModelManager {
 
         // 第二层
         for (int x = 3; x < 7; x++) {
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 7, 2)
             };
             _opaqueGroup.Add(stair);
@@ -303,7 +303,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(x, 7, 7);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _opaqueGroup.Add(stair);
@@ -315,7 +315,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(2, 7, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _opaqueGroup.Add(stair);
@@ -327,7 +327,7 @@ internal sealed class ModelManager {
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
             transform *= Matrix4x4.CreateTranslation(7, 7, z);
 
-            var stair = new PlanksOakSoildStair {
+            var stair = new PlanksOakSolidStair {
                 ModelMatrix = transform
             };
             _opaqueGroup.Add(stair);

@@ -363,10 +363,10 @@ internal sealed class DX12Engine {
 
     // DSV 资源的格式
     // 深度模板缓冲只支持四种格式:
-    // DXGI_FORMAT_D24_UNORM_S8_UINT	(每个像素占用四个字节 32 位，24 位无符号归一化浮点数留作深度值，8 位整数留作模板值)
-    // DXGI_FORMAT_D32_FLOAT_S8X24_UINT	(每个像素占用八个字节 64 位，32 位浮点数留作深度值，8 位整数留作模板值，其余 24 位保留不使用)
-    // DXGI_FORMAT_D16_UNORM			(每个像素占用两个字节 16 位，16 位无符号归一化浮点数留作深度值，范围 [0,1]，不使用模板)
-    // DXGI_FORMAT_D32_FLOAT			(每个像素占用四个字节 32 位，32 位浮点数留作深度值，不使用模板)
+    // DXGI_FORMAT_D24_UNORM_S8_UINT    (每个像素占用四个字节 32 位，24 位无符号归一化浮点数留作深度值，8 位整数留作模板值)
+    // DXGI_FORMAT_D32_FLOAT_S8X24_UINT    (每个像素占用八个字节 64 位，32 位浮点数留作深度值，8 位整数留作模板值，其余 24 位保留不使用)
+    // DXGI_FORMAT_D16_UNORM            (每个像素占用两个字节 16 位，16 位无符号归一化浮点数留作深度值，范围 [0,1]，不使用模板)
+    // DXGI_FORMAT_D32_FLOAT            (每个像素占用四个字节 32 位，32 位浮点数留作深度值，不使用模板)
     // 这里我们选择最常用的格式 DXGI_FORMAT_D24_UNORM_S8_UINT
     private const DXGI_FORMAT _dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     private ID3D12Resource _depthStencilBuffer;
@@ -555,7 +555,7 @@ internal sealed class DX12Engine {
             foreach (var level in DX12SupportLevels) {
                 if (D3D12CreateDevice(_dxgiAdapter, level, out _d3d12Device).Succeeded) {
                     var adap = _dxgiAdapter.GetDesc();
-                    Debug.WriteLine(adap.Description.ToString());
+                    Debug.WriteLine($"当前使用的显卡：{adap.Description}");
                     return true;
                 }
             }
@@ -626,7 +626,7 @@ internal sealed class DX12Engine {
             _dxgiSwapChain.GetBuffer<ID3D12Resource>(i, out var resource);
             _renderTargets[i] = new(resource);
 
-            _d3d12Device.CreateRenderTargetView(_renderTargets[i].Managed, default(D3D12_RENDER_TARGET_VIEW_DESC?), DestDescriptor: _rtvHandle);
+            _d3d12Device.CreateRenderTargetView(_renderTargets[i].Managed, default(D3D12_RENDER_TARGET_VIEW_DESC?), _rtvHandle);
 
             _rtvHandle.ptr += _rtvDescriptorSize;
         }
@@ -953,7 +953,7 @@ internal sealed class DX12Engine {
                textureFilename,
                null,
                GENERIC_ACCESS_RIGHTS.GENERIC_READ,
-               WICDecodeOptions.WICDecodeMetadataCacheOnLoad);
+               WICDecodeOptions.WICDecodeMetadataCacheOnDemand);
         } catch (Exception ex) {
             MessageBox(default, ex.Message, "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
             return false;
@@ -1061,10 +1061,9 @@ internal sealed class DX12Engine {
         _materialGroup[index].UploadTexture.Managed.Map(0, null, out var transferPointer);
 
         int rowBytes = (int)_bytesPerRowSize;
-        ReadOnlySpan<byte> allSrcData = textureData;
         byte* dstBasePtr = (byte*)transferPointer;
         for (int i = 0; i < _textureHeight; i++) {
-            var srcRow = allSrcData.Slice(i * rowBytes, rowBytes);
+            var srcRow = textureData.AsSpan().Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
         }
@@ -1519,7 +1518,7 @@ internal sealed class DX12Engine {
             rootSignatureDesc,
             D3D_ROOT_SIGNATURE_VERSION_1_0,
             out var signatureBlob,
-            out var errorBlob).ThrowOnFailure();
+            out var errorBlob);
 
         if (errorBlob is not null) {
             var errorMessage = Marshal.PtrToStringUTF8((nint)errorBlob.GetBufferPointer());
@@ -1635,14 +1634,10 @@ internal sealed class DX12Engine {
             Debug.WriteLine(errorMessage);
         }
 
-        psoDesc.VS = new() {
-            pShaderBytecode = vertexShaderBlob.GetBufferPointer(),
-            BytecodeLength = vertexShaderBlob.GetBufferSize(),
-        };
-        psoDesc.PS = new() {
-            pShaderBytecode = pixelShaderBlob.GetBufferPointer(),
-            BytecodeLength = pixelShaderBlob.GetBufferSize(),
-        };
+        psoDesc.VS.pShaderBytecode = vertexShaderBlob.GetBufferPointer();
+        psoDesc.VS.BytecodeLength = vertexShaderBlob.GetBufferSize();
+        psoDesc.PS.pShaderBytecode = pixelShaderBlob.GetBufferPointer();
+        psoDesc.PS.BytecodeLength = pixelShaderBlob.GetBufferSize();
 
         psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
@@ -2303,7 +2298,7 @@ internal sealed class DX12Engine {
                 break;
 
             case WM_CHAR:
-                var ch = (char)wParam;
+                var ch = (char)(nuint)wParam;
                 switch (ch) {
                     case 'w':
                     case 'W':

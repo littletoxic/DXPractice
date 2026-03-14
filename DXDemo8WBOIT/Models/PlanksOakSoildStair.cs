@@ -3,9 +3,9 @@ using Windows.Win32.Graphics.Direct3D12;
 
 namespace DXDemo8WBOIT.Models;
 
-internal sealed class PlanksOakSoildStair : SoildStair {
+internal sealed class PlanksOakSolidStair : SolidStair {
 
-    public PlanksOakSoildStair() {
+    public PlanksOakSolidStair() {
         _textureNameSet = ["planks_oak"];
     }
 
