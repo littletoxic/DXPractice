@@ -897,6 +897,18 @@ internal sealed class DX12Engine {
             _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
         }
 
+        var barrier = new D3D12_RESOURCE_BARRIER {
+            Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            Anonymous = new() {
+                Transition = new() {
+                    pResource = (ID3D12Resource_unmanaged*)_textureArrayDefaultResource.Ptr,
+                    StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
+                    StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                }
+            }
+        };
+        _commandList.ResourceBarrier([barrier]);
+
         _commandList.Close();
 
         _commandQueue.ExecuteCommandLists([_commandList]);
