@@ -37,7 +37,8 @@ internal static class DX12TextureHelper {
         new(GUID_WICPixelFormat16bppGrayHalf, DXGI_FORMAT_R16_FLOAT),
         new(GUID_WICPixelFormat16bppGray, DXGI_FORMAT_R16_UNORM),
         new(GUID_WICPixelFormat8bppGray, DXGI_FORMAT_R8_UNORM),
-        new(GUID_WICPixelFormat8bppAlpha, DXGI_FORMAT_A8_UNORM)
+        new(GUID_WICPixelFormat8bppAlpha, DXGI_FORMAT_A8_UNORM),
+        new(GUID_WICPixelFormat96bppRGBFloat, DXGI_FORMAT_R32G32B32_FLOAT)
     ]);
 
     private static readonly FrozenDictionary<Guid, Guid> WicConvert = FrozenDictionary.ToFrozenDictionary<Guid, Guid>([
@@ -78,6 +79,7 @@ internal static class DX12TextureHelper {
         new(GUID_WICPixelFormat40bppCMYKAlpha, GUID_WICPixelFormat64bppRGBA),
         new(GUID_WICPixelFormat80bppCMYKAlpha, GUID_WICPixelFormat64bppRGBA),
         new(GUID_WICPixelFormat32bppRGB, GUID_WICPixelFormat32bppRGBA),
+        new(GUID_WICPixelFormat96bppRGBFixedPoint, GUID_WICPixelFormat96bppRGBFloat),
         new(GUID_WICPixelFormat64bppRGB, GUID_WICPixelFormat64bppRGBA),
         new(GUID_WICPixelFormat64bppPRGBAHalf, GUID_WICPixelFormat64bppRGBAHalf),
         new(GUID_WICPixelFormat128bppRGBAFloat, GUID_WICPixelFormat128bppRGBAFloat),
@@ -94,7 +96,8 @@ internal static class DX12TextureHelper {
         new(GUID_WICPixelFormat16bppGrayHalf, GUID_WICPixelFormat16bppGrayHalf),
         new(GUID_WICPixelFormat16bppGray, GUID_WICPixelFormat16bppGray),
         new(GUID_WICPixelFormat8bppGray, GUID_WICPixelFormat8bppGray),
-        new(GUID_WICPixelFormat8bppAlpha, GUID_WICPixelFormat8bppAlpha)
+        new(GUID_WICPixelFormat8bppAlpha, GUID_WICPixelFormat8bppAlpha),
+        new(GUID_WICPixelFormat96bppRGBFloat, GUID_WICPixelFormat96bppRGBFloat)
     ]);
 
     // 查表确定兼容的最接近格式是哪个
