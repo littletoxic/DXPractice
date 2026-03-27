@@ -9,7 +9,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="LittleToxic.AssimpMetadata" />
-		<PackageReference Include="LittleToxic.StbImageMetadata" />
 		<PackageReference Include="Microsoft.Windows.CsWin32">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

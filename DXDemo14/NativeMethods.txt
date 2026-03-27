@@ -99,5 +99,3 @@ ID3D12Debug3
 // DXDemo13
 SetWindowText
 
-// DXDemo14
-StbiLoadf

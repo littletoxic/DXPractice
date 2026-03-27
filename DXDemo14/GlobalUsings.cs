@@ -1,5 +1,4 @@
 ﻿global using static Assimp.PInvoke;
-global using static StbImage.PInvoke;
 global using static Windows.Win32.Graphics.Direct3D.D3D_FEATURE_LEVEL;
 global using static Windows.Win32.Graphics.Direct3D.D3D_PRIMITIVE_TOPOLOGY;
 global using static Windows.Win32.Graphics.Direct3D12.D3D_ROOT_SIGNATURE_VERSION;

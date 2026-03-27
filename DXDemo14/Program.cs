@@ -478,7 +478,7 @@ internal sealed class DX12Engine {
     private int _hdrMapWidth;
     private int _hdrMapHeight;
     private int _hdrMapChannelsNum;
-    private nint _hdrMapData;
+    private float[] _hdrMapData;
     private DXGI_FORMAT _hdrMapFormat;
     private uint _hdrMapBitsPerPixel;
 
@@ -1674,14 +1674,20 @@ internal sealed class DX12Engine {
         _d3d12Device.CreateGraphicsPipelineState(psoDesc, out _modelPSO);
     }
 
-    private unsafe bool STEP21_LoadHDRTextureMap() {
+    private bool STEP21_LoadHDRTextureMap() {
 
-        _hdrMapData = (nint)StbiLoadf(HDRMapFilePath, out _hdrMapWidth, out _hdrMapHeight, out _hdrMapChannelsNum, 0);
-
-        if (_hdrMapData == 0) {
-            MessageBox(default, $"无法加载此类型的环境贴图：{HDRMapFilePath}", "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
+        HdrImage hdrImage;
+        try {
+            hdrImage = HdrImageLoader.Load(HDRMapFilePath);
+        } catch (Exception ex) {
+            MessageBox(default, $"无法加载此类型的环境贴图：{HDRMapFilePath}\n{ex.Message}", "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
             return false;
         }
+
+        _hdrMapData = hdrImage.Data;
+        _hdrMapWidth = hdrImage.Width;
+        _hdrMapHeight = hdrImage.Height;
+        _hdrMapChannelsNum = hdrImage.Channels;
 
         if (_hdrMapChannelsNum == 3) {
             _hdrMapFormat = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -1750,10 +1756,12 @@ internal sealed class DX12Engine {
 
     private unsafe void STEP23_CopyHDRResource() {
 
+        ArgumentNullException.ThrowIfNull(_hdrMapData);
+
         _hdrTextureUploadMap.Managed.Map(0, null, out var transferPointer);
 
         int rowBytes = (int)_bytesPerRowSize;
-        ReadOnlySpan<byte> allSrcData = new((void*)_hdrMapData, rowBytes * _hdrMapHeight);
+        ReadOnlySpan<byte> allSrcData = MemoryMarshal.AsBytes<float>(_hdrMapData);
         byte* dstBasePtr = (byte*)transferPointer;
         for (int i = 0; i < _hdrMapHeight; i++) {
             var srcRow = allSrcData.Slice(i * rowBytes, rowBytes);
