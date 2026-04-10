@@ -104,7 +104,7 @@ internal static class DX12TextureHelper {
     // 查表确定兼容的最接近格式是哪个
     internal static bool GetTargetPixelFormat(Guid sourceFormat, out Guid targetFormat) => WicConvert.TryGetValue(sourceFormat, out targetFormat);
 
-    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT_UNKNOWN;
+    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.GetValueOrDefault(pixelFormat, DXGI_FORMAT_UNKNOWN);
 
     // 根据 WIC target 格式的语义选择正确的 Shader4ComponentMapping
     // WIC 格式名称携带语义信息（Gray = 灰度, Alpha = 仅 alpha, BGR 无 A = 无 alpha）
@@ -1204,11 +1204,11 @@ internal sealed class DX12Engine {
         }
 
         // 纹理复制完成后，将所有纹理从 COPY_DEST 转换为 PIXEL_SHADER_RESOURCE
-        for (var i = 0; i < _materialGroup.Count; i++) {
+        foreach (var material in _materialGroup) {
             var barrier = new D3D12_RESOURCE_BARRIER {
                 Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
             };
-            barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
+            barrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)material.DefaultTexture.Ptr;
             barrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
             barrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             _commandList.ResourceBarrier([barrier]);
@@ -1770,7 +1770,7 @@ internal sealed class DX12Engine {
 internal static class Program {
 
     [STAThread]
-    static void Main() {
+    private static void Main() {
         using var hInstance = GetModuleHandle();
 
         DX12Engine.Run(hInstance);

@@ -33,7 +33,7 @@ internal static partial class PInvoke {
 
 internal sealed unsafe class ComPtr<T>(T managed) : IDisposable {
     public T Managed { get; } = managed;
-    public void* Ptr { get; private set; } = ComInterfaceMarshaller<T>.ConvertToUnmanaged(managed);
+    public void* Ptr { get; } = ComInterfaceMarshaller<T>.ConvertToUnmanaged(managed);
     private bool _disposed;
 
     public void Dispose() {

@@ -103,7 +103,7 @@ internal static class DX12TextureHelper {
     // 查表确定兼容的最接近格式是哪个
     internal static bool GetTargetPixelFormat(Guid sourceFormat, out Guid targetFormat) => WicConvert.TryGetValue(sourceFormat, out targetFormat);
 
-    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT_UNKNOWN;
+    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.GetValueOrDefault(pixelFormat, DXGI_FORMAT_UNKNOWN);
 }
 
 internal static class CallBackWrapper {
@@ -553,11 +553,11 @@ internal sealed class DX12Engine {
         for (uint i = 0; _dxgiFactory.EnumAdapters1(i, out _dxgiAdapter) != HRESULT.DXGI_ERROR_NOT_FOUND; i++) {
             // 找到显卡，就创建 D3D12 设备，从高到低遍历所有功能版本，创建成功就跳出
             foreach (var level in DX12SupportLevels) {
-                if (D3D12CreateDevice(_dxgiAdapter, level, out _d3d12Device).Succeeded) {
-                    var adapter = _dxgiAdapter.GetDesc();
-                    Debug.WriteLine($"当前使用的显卡：{adapter.Description}");
-                    return true;
-                }
+                if (!D3D12CreateDevice(_dxgiAdapter, level, out _d3d12Device).Succeeded)
+                    continue;
+                var adapter = _dxgiAdapter.GetDesc();
+                Debug.WriteLine($"当前使用的显卡：{adapter.Description}");
+                return true;
             }
         }
 
@@ -748,13 +748,13 @@ internal sealed class DX12Engine {
         }
 
 
-        for (int i = 0; i < _textureGroup.Length; i++) {
+        foreach (var texture in _textureGroup) {
             try {
                 _wicBitmapDecoder = _wicFactory.CreateDecoderFromFilename(
-                   _textureGroup[i].FilePath,
-                   null,
-                   GENERIC_ACCESS_RIGHTS.GENERIC_READ,
-                   WICDecodeOptions.WICDecodeMetadataCacheOnDemand);
+                    texture.FilePath,
+                    null,
+                    GENERIC_ACCESS_RIGHTS.GENERIC_READ,
+                    WICDecodeOptions.WICDecodeMetadataCacheOnDemand);
             } catch (Exception ex) {
                 MessageBox(default, ex.Message, "错误", MESSAGEBOX_STYLE.MB_OK | MESSAGEBOX_STYLE.MB_ICONERROR);
                 return false;
@@ -778,7 +778,7 @@ internal sealed class DX12Engine {
                 0.0,
                 WICBitmapPaletteType.WICBitmapPaletteTypeCustom);
 
-            _textureGroup[i].WICBitmapSource = _wicFormatConverter;
+            texture.WICBitmapSource = _wicFormatConverter;
         }
 
         return true;
@@ -1565,7 +1565,7 @@ internal sealed class DX12Engine {
 internal static class Program {
 
     [STAThread]
-    static void Main() {
+    private static void Main() {
         using var hInstance = GetModuleHandle();
 
         DX12Engine.Run(hInstance);

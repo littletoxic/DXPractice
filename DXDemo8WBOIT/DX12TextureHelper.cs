@@ -83,5 +83,5 @@ internal static class DX12TextureHelper {
     // 查表确定兼容的最接近格式是哪个
     internal static bool GetTargetPixelFormat(Guid sourceFormat, out Guid targetFormat) => WicConvert.TryGetValue(sourceFormat, out targetFormat);
 
-    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.TryGetValue(pixelFormat, out var format) ? format : DXGI_FORMAT_UNKNOWN;
+    internal static DXGI_FORMAT GetDXGIFormatFromPixelFormat(Guid pixelFormat) => WicToDxgiFormat.GetValueOrDefault(pixelFormat, DXGI_FORMAT_UNKNOWN);
 }

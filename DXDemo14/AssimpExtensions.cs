@@ -92,10 +92,10 @@ internal partial struct Bone {
 }
 
 
-internal unsafe ref struct PtrSpan<T>(T** ptr, uint count) where T : unmanaged {
-    public readonly int Length => (int)count;
-    public readonly ref T this[int index] => ref *ptr[index];
-    public readonly PtrSpanEnumerator GetEnumerator() => new(this);
+internal readonly unsafe ref struct PtrSpan<T>(T** ptr, uint count) where T : unmanaged {
+    public int Length => (int)count;
+    public ref T this[int index] => ref *ptr[index];
+    public PtrSpanEnumerator GetEnumerator() => new(this);
 
     internal ref struct PtrSpanEnumerator(PtrSpan<T> ptrSpan) : IEnumerator<T> {
         private readonly PtrSpan<T> _ptrSpan = ptrSpan;
