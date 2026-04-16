@@ -7,15 +7,9 @@ using System.Text;
 namespace Assimp;
 
 internal static partial class PInvoke {
-    internal const string _AI_MATKEY_NAME_BASE = "?mat.name";
-
     internal const string _AI_MATKEY_COLOR_DIFFUSE_BASE = "$clr.diffuse";
     internal const string _AI_MATKEY_COLOR_SPECULAR_BASE = "$clr.specular";
     internal const string _AI_MATKEY_SHININESS_BASE = "$mat.shininess";
-
-    internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) {
-        return ref *ImportFile(pFile, pFlags);
-    }
 
     internal static ReturnCode GetMaterialFloat(in Material pMat, string pKey, uint type, uint index, out float value) {
         Unsafe.SkipInit(out value);
@@ -79,8 +73,6 @@ internal partial struct Mesh {
     }
 
     internal readonly unsafe bool HasBones() => mBones != null && mNumBones > 0;
-
-    internal readonly unsafe ReadOnlySpan<AssimpVector3D> Normals => new(mNormals, (int)mNumVertices);
 }
 
 internal partial struct Face {

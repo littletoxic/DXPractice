@@ -121,7 +121,7 @@ internal sealed class Bed : Model {
             out _indexResource);
 
         MapWriteUnmap(_vertexResource, VertexArray);
-        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        var matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
         matrixSpan.Fill(ModelMatrix);
         MapWriteUnmap(_modelMatrixResource, matrixSpan);
         MapWriteUnmap(_indexResource, IndexArray);

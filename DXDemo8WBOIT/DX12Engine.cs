@@ -129,7 +129,7 @@ internal sealed class DX12Engine {
 
     private readonly Camera _firstCamera = new();
 
-    private D3D12_VIEWPORT _viewPort = new() {
+    private readonly D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
         TopLeftY = 0,
         Width = WindowWidth,
@@ -137,7 +137,7 @@ internal sealed class DX12Engine {
         MinDepth = D3D12_MIN_DEPTH,
         MaxDepth = D3D12_MAX_DEPTH
     };
-    private RECT _scissorRect = new() {
+    private readonly RECT _scissorRect = new() {
         left = 0,
         top = 0,
         right = WindowWidth,
@@ -275,7 +275,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateFenceAndBarrier() {
-        _renderEvent = CreateEvent(null, false, false, null);
+        _renderEvent = CreateEvent(null, false, false);
 
         _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
@@ -475,7 +475,7 @@ internal sealed class DX12Engine {
 
     private void StartCommandRecord() {
         _commandAllocator.Reset();
-        _commandList.Reset(_commandAllocator, null);
+        _commandList.Reset(_commandAllocator);
     }
 
     private bool LoadTextureFromFile(string textureFilename) {
@@ -596,13 +596,13 @@ internal sealed class DX12Engine {
     private unsafe void CopyTextureDataToDefaultResource(TextureMapInfo info) {
         var textureData = ArrayPool<byte>.Shared.Rent((int)_textureSize);
 
-        _wicBitmapSource.CopyPixels(default, _bytesPerRowSize, textureData);
+        _wicBitmapSource.CopyPixels(null, _bytesPerRowSize, textureData);
 
         info.UploadHeapTextureResource.Managed.Map(0, null, out var transferPointer);
 
-        int rowBytes = (int)_bytesPerRowSize;
-        byte* dstBasePtr = (byte*)transferPointer;
-        for (int i = 0; i < _textureHeight; i++) {
+        var rowBytes = (int)_bytesPerRowSize;
+        var dstBasePtr = (byte*)transferPointer;
+        for (var i = 0; i < _textureHeight; i++) {
             var srcRow = textureData.AsSpan().Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
@@ -693,7 +693,7 @@ internal sealed class DX12Engine {
     }
 
     private unsafe void CreateCBVResource() {
-        uint cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        var cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -1315,7 +1315,7 @@ internal sealed class DX12Engine {
         _commandList.ResourceBarrier([_wboitBarrierToSRV]);
 
         // 切换到后备缓冲区
-        _commandList.OMSetRenderTargets(1, _rtvHandle, false, default);
+        _commandList.OMSetRenderTargets(1, _rtvHandle, false);
 
         // 设置合成 PSO (复用原根签名，无需重新设置)
         _commandList.SetPipelineState(_wboitCompositePSO);
@@ -1349,7 +1349,7 @@ internal sealed class DX12Engine {
     }
 
     private void RenderLoop() {
-        bool exit = false;
+        var exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
                 [new(_renderEvent.DangerousGetHandle())],
@@ -1362,7 +1362,7 @@ internal sealed class DX12Engine {
                     Render();
                     break;
                 case 1: // ActiveEvent 是 1，说明渲染事件未完成，CPU 主线程同时处理窗口消息，防止界面假死
-                    while (PeekMessage(out MSG msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
+                    while (PeekMessage(out var msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
                         if (msg.message == WM_QUIT) {
                             exit = true;
                             break;

@@ -25,22 +25,11 @@ internal sealed class Camera {
     private const float FarZ = 1000f;            // 远平面到原点的距离
 
     // 观察矩阵，注意前两个参数是点，第三个参数才是向量
-    private Matrix4x4 _viewMatrix;
+    private Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
     // 投影矩阵(注意近平面和远平面距离不能 <= 0!)
-    private Matrix4x4 _projectionMatrix;
+    private readonly Matrix4x4 _projectionMatrix;
 
-    internal Matrix4x4 MVPMatrix {
-        get {
-            _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
-            return _viewMatrix * _projectionMatrix; // MVP 矩阵
-        }
-    }
-
-    internal Matrix4x4 ViewMatrix {
-        get {
-            return Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
-        }
-    }
+    internal Matrix4x4 MVPMatrix => ViewMatrix * _projectionMatrix; // MVP 矩阵
 
     internal Camera() {
         _eyePosition = new Vector3(4, 5, -4);
@@ -48,7 +37,6 @@ internal sealed class Camera {
         _upDirection = new Vector3(0, 1, 0);
 
         // 注意！我们这里移除了模型矩阵！每个模型会指定具体的模型矩阵！
-        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
         _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
 
         _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
@@ -100,8 +88,8 @@ internal sealed class Camera {
         float deltaX = currentCursorPoint.X - _lastCursorPoint.X;
         float deltaY = currentCursorPoint.Y - _lastCursorPoint.Y;
 
-        float angleX = deltaX * (MathF.PI / 180.0f) * 0.25f;
-        float angleY = deltaY * (MathF.PI / 180.0f) * 0.25f;
+        var angleX = deltaX * (MathF.PI / 180.0f) * 0.25f;
+        var angleY = deltaY * (MathF.PI / 180.0f) * 0.25f;
 
         RotateByY(angleY);
         RotateByX(angleX);

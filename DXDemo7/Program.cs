@@ -135,16 +135,11 @@ internal sealed class Camera {
     private const float FarZ = 1000f;            // 远平面到原点的距离
 
     // 观察矩阵，注意前两个参数是点，第三个参数才是向量
-    private Matrix4x4 _viewMatrix;
+    private Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
     // 投影矩阵(注意近平面和远平面距离不能 <= 0!)
-    private Matrix4x4 _projectionMatrix;
+    private readonly Matrix4x4 _projectionMatrix;
 
-    internal Matrix4x4 MVPMatrix {
-        get {
-            _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
-            return _viewMatrix * _projectionMatrix; // MVP 矩阵
-        }
-    }
+    internal Matrix4x4 MVPMatrix => ViewMatrix * _projectionMatrix; // MVP 矩阵
 
     internal Camera() {
         _eyePosition = new Vector3(4, 5, -4);
@@ -152,7 +147,6 @@ internal sealed class Camera {
         _upDirection = new Vector3(0, 1, 0);
 
         // 注意！我们这里移除了模型矩阵！每个模型会指定具体的模型矩阵！
-        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
         _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
 
         _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
@@ -204,8 +198,8 @@ internal sealed class Camera {
         float deltaX = currentCursorPoint.X - _lastCursorPoint.X;
         float deltaY = currentCursorPoint.Y - _lastCursorPoint.Y;
 
-        float angleX = deltaX * (MathF.PI / 180.0f) * 0.25f;
-        float angleY = deltaY * (MathF.PI / 180.0f) * 0.25f;
+        var angleX = deltaX * (MathF.PI / 180.0f) * 0.25f;
+        var angleY = deltaY * (MathF.PI / 180.0f) * 0.25f;
 
         RotateByY(angleY);
         RotateByX(angleX);
@@ -354,7 +348,7 @@ internal abstract class SolidBlock : Model {
             out _indexResource);
 
         MapWriteUnmap(_vertexResource, VertexArray);
-        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        var matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
         matrixSpan.Fill(ModelMatrix);
         MapWriteUnmap(_modelMatrixResource, matrixSpan);
         MapWriteUnmap(_indexResource, IndexArray);
@@ -496,7 +490,7 @@ internal abstract class SolidStair : Model {
             out _indexResource);
 
         MapWriteUnmap(_vertexResource, VertexArray);
-        Span<Matrix4x4> matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
+        var matrixSpan = VertexArray.Length <= 128 ? stackalloc Matrix4x4[VertexArray.Length] : new Matrix4x4[VertexArray.Length];
         matrixSpan.Fill(ModelMatrix);
         MapWriteUnmap(_modelMatrixResource, matrixSpan);
         MapWriteUnmap(_indexResource, IndexArray);
@@ -691,9 +685,9 @@ internal sealed class ModelManager {
 
     public void CreateBlock() {
         // 两层泥土地基，y 是高度
-        for (int x = 0; x < 10; x++) {
-            for (int z = -4; z < 10; z++) {
-                for (int y = -2; y < 0; y++) {
+        for (var x = 0; x < 10; x++) {
+            for (var z = -4; z < 10; z++) {
+                for (var y = -2; y < 0; y++) {
                     var dirt = new Dirt {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, z)
                     };
@@ -703,8 +697,8 @@ internal sealed class ModelManager {
         }
 
         // 一层草方块地基
-        for (int x = 0; x < 10; x++) {
-            for (int z = -4; z < 10; z++) {
+        for (var x = 0; x < 10; x++) {
+            for (var z = -4; z < 10; z++) {
                 var grass = new Grass {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 0, z)
                 };
@@ -713,8 +707,8 @@ internal sealed class ModelManager {
         }
 
         // 4x4 木板房基
-        for (int x = 3; x < 7; x++) {
-            for (int z = 3; z < 7; z++) {
+        for (var x = 3; x < 7; x++) {
+            for (var z = 3; z < 7; z++) {
                 var plank = new PlanksOak() {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 2, z)
                 };
@@ -724,56 +718,56 @@ internal sealed class ModelManager {
 
         // 8 柱原木 
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(3, y, 2)
             };
             _modelGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, y, 3)
             };
             _modelGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(6, y, 2)
             };
             _modelGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, y, 3)
             };
             _modelGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, y, 6)
             };
             _modelGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(6, y, 7)
             };
             _modelGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, y, 6)
             };
             _modelGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(3, y, 7)
             };
@@ -792,8 +786,8 @@ internal sealed class ModelManager {
             };
             _modelGroup.Add(plank);
 
-            for (int y = 5; y < 7; y++) {
-                for (int x = 4; x < 6; x++) {
+            for (var y = 5; y < 7; y++) {
+                for (var x = 4; x < 6; x++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, 2)
                     };
@@ -801,8 +795,8 @@ internal sealed class ModelManager {
                 }
             }
 
-            for (int y = 2; y < 4; y++) {
-                for (int z = 4; z < 6; z++) {
+            for (var y = 2; y < 4; y++) {
+                for (var z = 4; z < 6; z++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(2, y, z)
                     };
@@ -810,8 +804,8 @@ internal sealed class ModelManager {
                 }
             }
 
-            for (int y = 2; y < 4; y++) {
-                for (int x = 4; x < 6; x++) {
+            for (var y = 2; y < 4; y++) {
+                for (var x = 4; x < 6; x++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, 7)
                     };
@@ -819,8 +813,8 @@ internal sealed class ModelManager {
                 }
             }
 
-            for (int y = 2; y < 4; y++) {
-                for (int z = 4; z < 6; z++) {
+            for (var y = 2; y < 4; y++) {
+                for (var z = 4; z < 6; z++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(7, y, z)
                     };
@@ -880,8 +874,8 @@ internal sealed class ModelManager {
         }
 
         // 4x4 木板房顶
-        for (int x = 3; x < 7; x++) {
-            for (int z = 3; z < 7; z++) {
+        for (var x = 3; x < 7; x++) {
+            for (var z = 3; z < 7; z++) {
                 var plank = new PlanksOak {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 6, z)
                 };
@@ -892,14 +886,14 @@ internal sealed class ModelManager {
         // 屋顶
 
         // 第一层
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 6, 1)
             };
             _modelGroup.Add(stair);
         }
 
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             // 旋转橡木台阶用的模型矩阵
             // 这里本来是可以不用 XMMatrixTranslation(-0.5, -0.5, -0.5) 平移到模型中心的
             // 因为作者本人 (我) 的设计失误，把模型坐标系原点建立在模型左下角了 (见上文的 VertexArray)
@@ -916,7 +910,7 @@ internal sealed class ModelManager {
             _modelGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI / 2.0f);            // 旋转 90°
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -928,7 +922,7 @@ internal sealed class ModelManager {
             _modelGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI + MathF.PI / 2.0f); // 旋转 270°
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -941,14 +935,14 @@ internal sealed class ModelManager {
         }
 
         // 第二层
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 7, 2)
             };
             _modelGroup.Add(stair);
         }
 
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI);
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -960,7 +954,7 @@ internal sealed class ModelManager {
             _modelGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI / 2.0f);
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -972,7 +966,7 @@ internal sealed class ModelManager {
             _modelGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI + MathF.PI / 2.0f);
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -985,8 +979,8 @@ internal sealed class ModelManager {
         }
 
         // 补上屋顶空位
-        for (int x = 3; x < 7; x++) {
-            for (int z = 3; z < 7; z++) {
+        for (var x = 3; x < 7; x++) {
+            for (var z = 3; z < 7; z++) {
                 var plank = new PlanksOak {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 7, z)
                 };
@@ -1116,7 +1110,7 @@ internal sealed class DX12Engine {
 
     private readonly Camera _firstCamera = new();
 
-    private D3D12_VIEWPORT _viewPort = new() {
+    private readonly D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
         TopLeftY = 0,
         Width = WindowWidth,
@@ -1124,7 +1118,7 @@ internal sealed class DX12Engine {
         MinDepth = D3D12_MIN_DEPTH,
         MaxDepth = D3D12_MAX_DEPTH
     };
-    private RECT _scissorRect = new() {
+    private readonly RECT _scissorRect = new() {
         left = 0,
         top = 0,
         right = WindowWidth,
@@ -1262,7 +1256,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateFenceAndBarrier() {
-        _renderEvent = CreateEvent(null, false, false, null);
+        _renderEvent = CreateEvent(null, false, false);
 
         _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
@@ -1348,7 +1342,7 @@ internal sealed class DX12Engine {
 
     private void StartCommandRecord() {
         _commandAllocator.Reset();
-        _commandList.Reset(_commandAllocator, null);
+        _commandList.Reset(_commandAllocator);
     }
 
     private bool LoadTextureFromFile(string textureFilename) {
@@ -1469,13 +1463,13 @@ internal sealed class DX12Engine {
     private unsafe void CopyTextureDataToDefaultResource(TextureMapInfo info) {
         var textureData = ArrayPool<byte>.Shared.Rent((int)_textureSize);
 
-        _wicBitmapSource.CopyPixels(default, _bytesPerRowSize, textureData);
+        _wicBitmapSource.CopyPixels(null, _bytesPerRowSize, textureData);
 
         info.UploadHeapTextureResource.Managed.Map(0, null, out var transferPointer);
 
-        int rowBytes = (int)_bytesPerRowSize;
-        byte* dstBasePtr = (byte*)transferPointer;
-        for (int i = 0; i < _textureHeight; i++) {
+        var rowBytes = (int)_bytesPerRowSize;
+        var dstBasePtr = (byte*)transferPointer;
+        for (var i = 0; i < _textureHeight; i++) {
             var srcRow = textureData.AsSpan().Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
@@ -1566,7 +1560,7 @@ internal sealed class DX12Engine {
     }
 
     private unsafe void CreateCBVResource() {
-        uint cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        var cBufferSize = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -1682,7 +1676,7 @@ internal sealed class DX12Engine {
         var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[6];
 
         var semanticNamePosition = "POSITION"u8;
-        byte* pSemanticNamePosition = stackalloc byte[semanticNamePosition.Length + 1];
+        var pSemanticNamePosition = stackalloc byte[semanticNamePosition.Length + 1];
         semanticNamePosition.CopyTo(new Span<byte>(pSemanticNamePosition, semanticNamePosition.Length));
         pSemanticNamePosition[semanticNamePosition.Length] = 0;
 
@@ -1698,7 +1692,7 @@ internal sealed class DX12Engine {
         };
 
         var semanticNameTexCoord = "TEXCOORD"u8;
-        byte* pSemanticNameTexCoord = stackalloc byte[semanticNameTexCoord.Length + 1];
+        var pSemanticNameTexCoord = stackalloc byte[semanticNameTexCoord.Length + 1];
         semanticNameTexCoord.CopyTo(new Span<byte>(pSemanticNameTexCoord, semanticNameTexCoord.Length));
         pSemanticNameTexCoord[semanticNameTexCoord.Length] = 0;
 
@@ -1715,7 +1709,7 @@ internal sealed class DX12Engine {
         };
 
         var semanticNameMatrix = "MATRIX"u8;
-        byte* pSemanticNameMatrix = stackalloc byte[semanticNameMatrix.Length + 1];
+        var pSemanticNameMatrix = stackalloc byte[semanticNameMatrix.Length + 1];
         semanticNameMatrix.CopyTo(new Span<byte>(pSemanticNameMatrix, semanticNameMatrix.Length));
         pSemanticNameMatrix[semanticNameMatrix.Length] = 0;
 
@@ -1856,7 +1850,7 @@ internal sealed class DX12Engine {
     }
 
     private void RenderLoop() {
-        bool exit = false;
+        var exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
                 [new(_renderEvent.DangerousGetHandle())],
@@ -1869,7 +1863,7 @@ internal sealed class DX12Engine {
                     Render();
                     break;
                 case 1: // ActiveEvent 是 1，说明渲染事件未完成，CPU 主线程同时处理窗口消息，防止界面假死
-                    while (PeekMessage(out MSG msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
+                    while (PeekMessage(out var msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
                         if (msg.message == WM_QUIT) {
                             exit = true;
                             break;

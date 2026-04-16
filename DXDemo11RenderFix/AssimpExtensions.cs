@@ -7,7 +7,6 @@ using System.Text;
 namespace Assimp;
 
 internal static partial class PInvoke {
-    internal const string _AI_MATKEY_NAME_BASE = "?mat.name";
     internal const string _AI_MATKEY_COLOR_DIFFUSE_BASE = "$clr.diffuse";
     internal const string _AI_MATKEY_COLOR_EMISSIVE_BASE = "$clr.emissive";
     internal const string _AI_MATKEY_TWOSIDED_BASE = "$mat.twosided";
@@ -15,10 +14,6 @@ internal static partial class PInvoke {
     internal static ReturnCode GetMaterialInteger(in Material pMat, string pKey, uint type, uint index, out int value) {
         Unsafe.SkipInit(out value);
         return GetMaterialIntegerArray(pMat, pKey, type, index, new(ref value));
-    }
-
-    internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) {
-        return ref *ImportFile(pFile, pFlags);
     }
 }
 

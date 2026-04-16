@@ -75,7 +75,7 @@ internal sealed class Program {
         Console.WriteLine("开始遍历节点!\n");
 
         // 基础偏移字符串，用于打印时区分父子节点
-        string nodeBaseStr = "";
+        var nodeBaseStr = "";
 
         // 从根节点开始递归打印
         ModelNodeTraversal(ref modelScene.RootNode, nodeBaseStr, 1);
@@ -175,12 +175,9 @@ internal sealed class Program {
 
         Console.WriteLine("开始计算包围盒!\n");
 
-        // AABB 包围盒，下一章有大用
-        Vector3 minBounds, maxBounds;  // 最小坐标点和最大坐标点
-
         // 设置初始值，模型 AABB 包围盒，用于调整摄像机视野，防止模型在摄像机视野外飞出去
-        minBounds = new(float.MaxValue);
-        maxBounds = new(float.MinValue);
+        Vector3 minBounds = new(float.MaxValue);
+        Vector3 maxBounds = new(float.MinValue); // 最小坐标点和最大坐标点
 
 
         // 逐网格遍历，计算整个模型的 AABB 包围盒，请注意导入模型时要指定 GenBoundingBoxes，否则 MAABB 成员会没有数据

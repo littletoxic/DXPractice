@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using Windows.Win32.Foundation;
@@ -106,10 +105,4 @@ internal static class Extensions {
         surface = result as T;
     }
 
-    // ID3D12GraphicsCommandList 实例扩展
-    internal static unsafe void SetGraphicsRoot32BitConstants<T>(this ID3D12GraphicsCommandList commandList, uint RootParameterIndex, ReadOnlySpan<T> SrcData, uint DestOffsetIn32BitValues) where T : unmanaged {
-        fixed (T* pSrcData = SrcData) {
-            commandList.SetGraphicsRoot32BitConstants(RootParameterIndex, (uint)((SrcData.Length * Unsafe.SizeOf<T>() + sizeof(uint) - 1) / sizeof(uint)), pSrcData, DestOffsetIn32BitValues);
-        }
-    }
 }

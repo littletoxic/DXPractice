@@ -85,9 +85,9 @@ internal static class HdrImageLoader {
 
         var reader = new HdrByteReader(data);
         var info = ParseInfo(ref reader, options.MaxDimension);
-        int channels = options.RequestedChannels == 0 ? info.SourceChannels : options.RequestedChannels;
-        int pixelCount = checked(info.Width * info.Height);
-        float[] decodedData = new float[checked(pixelCount * channels)];
+        var channels = options.RequestedChannels == 0 ? info.SourceChannels : options.RequestedChannels;
+        var pixelCount = checked(info.Width * info.Height);
+        var decodedData = new float[checked(pixelCount * channels)];
 
         DecodeImage(ref reader, info, channels, decodedData);
 
@@ -137,7 +137,7 @@ internal static class HdrImageLoader {
             throw new InvalidDataException("Not a Radiance HDR image.");
         }
 
-        bool hasFormat = false;
+        var hasFormat = false;
 
         while (reader.TryReadLine(out var line)) {
             if (line.Length == 0) {
@@ -157,7 +157,7 @@ internal static class HdrImageLoader {
             throw new InvalidDataException("Missing HDR resolution line.");
         }
 
-        if (!TryParseResolution(resolutionLine, out int width, out int height)) {
+        if (!TryParseResolution(resolutionLine, out var width, out var height)) {
             throw new InvalidDataException("Unsupported HDR data layout.");
         }
 
@@ -223,7 +223,7 @@ internal static class HdrImageLoader {
             return false;
         }
 
-        int i = 0;
+        var i = 0;
         while (i < source.Length && !IsAsciiWhitespace(source[i])) {
             i++;
         }
@@ -240,7 +240,7 @@ internal static class HdrImageLoader {
             return false;
         }
 
-        foreach (byte b in token) {
+        foreach (var b in token) {
             if (b is < (byte)'0' or > (byte)'9') {
                 return false;
             }
@@ -254,12 +254,12 @@ internal static class HdrImageLoader {
     }
 
     private static ReadOnlySpan<byte> TrimAsciiWhitespace(ReadOnlySpan<byte> value) {
-        int start = 0;
+        var start = 0;
         while (start < value.Length && IsAsciiWhitespace(value[start])) {
             start++;
         }
 
-        int end = value.Length - 1;
+        var end = value.Length - 1;
         while (end >= start && IsAsciiWhitespace(value[end])) {
             end--;
         }
@@ -277,18 +277,18 @@ internal static class HdrImageLoader {
             return;
         }
 
-        int scanlineByteCount = checked(info.Width * 4);
+        var scanlineByteCount = checked(info.Width * 4);
         byte[] rented = null;
-        Span<byte> scanline = scanlineByteCount <= 1024
+        var scanline = scanlineByteCount <= 1024
             ? stackalloc byte[scanlineByteCount]
             : (rented = ArrayPool<byte>.Shared.Rent(scanlineByteCount));
         scanline = scanline[..scanlineByteCount];
 
         try {
-            for (int row = 0; row < info.Height; row++) {
-                byte c1 = reader.ReadByteOrThrow("Unexpected end of HDR data.");
-                byte c2 = reader.ReadByteOrThrow("Unexpected end of HDR data.");
-                byte lenHigh = reader.ReadByteOrThrow("Unexpected end of HDR data.");
+            for (var row = 0; row < info.Height; row++) {
+                var c1 = reader.ReadByteOrThrow("Unexpected end of HDR data.");
+                var c2 = reader.ReadByteOrThrow("Unexpected end of HDR data.");
+                var lenHigh = reader.ReadByteOrThrow("Unexpected end of HDR data.");
 
                 if (c1 != 2 || c2 != 2 || (lenHigh & 0x80) != 0) {
                     Span<byte> firstPixel = [
@@ -303,25 +303,25 @@ internal static class HdrImageLoader {
                     return;
                 }
 
-                int encodedWidth = (lenHigh << 8) | reader.ReadByteOrThrow("Unexpected end of HDR data.");
+                var encodedWidth = (lenHigh << 8) | reader.ReadByteOrThrow("Unexpected end of HDR data.");
                 if (encodedWidth != info.Width) {
                     throw new InvalidDataException("Invalid decoded HDR scanline length.");
                 }
 
-                for (int channel = 0; channel < 4; channel++) {
-                    int x = 0;
+                for (var channel = 0; channel < 4; channel++) {
+                    var x = 0;
                     while (x < info.Width) {
-                        byte count = reader.ReadByteOrThrow("Unexpected end of HDR data.");
-                        int remaining = info.Width - x;
+                        var count = reader.ReadByteOrThrow("Unexpected end of HDR data.");
+                        var remaining = info.Width - x;
 
                         if (count > 128) {
-                            int runLength = count - 128;
+                            var runLength = count - 128;
                             if (runLength == 0 || runLength > remaining) {
                                 throw new InvalidDataException("Bad RLE data in HDR image.");
                             }
 
-                            byte value = reader.ReadByteOrThrow("Unexpected end of HDR data.");
-                            for (int i = 0; i < runLength; i++) {
+                            var value = reader.ReadByteOrThrow("Unexpected end of HDR data.");
+                            for (var i = 0; i < runLength; i++) {
                                 scanline[(x++ * 4) + channel] = value;
                             }
                         } else {
@@ -330,15 +330,15 @@ internal static class HdrImageLoader {
                                 throw new InvalidDataException("Bad RLE data in HDR image.");
                             }
 
-                            for (int i = 0; i < literalLength; i++) {
+                            for (var i = 0; i < literalLength; i++) {
                                 scanline[(x++ * 4) + channel] = reader.ReadByteOrThrow("Unexpected end of HDR data.");
                             }
                         }
                     }
                 }
 
-                int rowOffset = checked(row * info.Width * requestedChannels);
-                for (int x = 0; x < info.Width; x++) {
+                var rowOffset = checked(row * info.Width * requestedChannels);
+                for (var x = 0; x < info.Width; x++) {
                     ConvertRgbeToFloat(scanline[(x * 4)..((x * 4) + 4)], destination, rowOffset + (x * requestedChannels), requestedChannels);
                 }
             }
@@ -351,9 +351,9 @@ internal static class HdrImageLoader {
 
     private static void DecodeFlatPixels(ref HdrByteReader reader, int width, int height, int requestedChannels, float[] destination, int startPixelIndex) {
         Span<byte> rgbe = stackalloc byte[4];
-        int pixelCount = checked(width * height);
+        var pixelCount = checked(width * height);
 
-        for (int pixelIndex = startPixelIndex; pixelIndex < pixelCount; pixelIndex++) {
+        for (var pixelIndex = startPixelIndex; pixelIndex < pixelCount; pixelIndex++) {
             reader.ReadExactly(rgbe, "Unexpected end of HDR data.");
             ConvertRgbeToFloat(rgbe, destination, pixelIndex * requestedChannels, requestedChannels);
         }
@@ -361,7 +361,7 @@ internal static class HdrImageLoader {
 
     private static void ConvertRgbeToFloat(ReadOnlySpan<byte> input, float[] output, int outputIndex, int requestedChannels) {
         if (input[3] != 0) {
-            float scale = MathF.ScaleB(1.0f, input[3] - (128 + 8));
+            var scale = MathF.ScaleB(1.0f, input[3] - (128 + 8));
             if (requestedChannels <= 2) {
                 output[outputIndex] = (input[0] + input[1] + input[2]) * scale / 3.0f;
             } else {
@@ -396,28 +396,23 @@ internal static class HdrImageLoader {
     }
 
     private static void VerticalFlip(float[] image, int width, int height, int channels) {
-        int rowLength = checked(width * channels);
-        float[] rowBuffer = new float[rowLength];
+        var rowLength = checked(width * channels);
+        var rowBuffer = new float[rowLength];
         Span<float> swapBuffer = rowBuffer;
 
         for (int top = 0, bottom = height - 1; top < bottom; top++, bottom--) {
-            Span<float> topRow = image.AsSpan(top * rowLength, rowLength);
-            Span<float> bottomRow = image.AsSpan(bottom * rowLength, rowLength);
+            var topRow = image.AsSpan(top * rowLength, rowLength);
+            var bottomRow = image.AsSpan(bottom * rowLength, rowLength);
             topRow.CopyTo(swapBuffer);
             bottomRow.CopyTo(topRow);
             swapBuffer.CopyTo(bottomRow);
         }
     }
 
-    private ref struct HdrByteReader {
+    private ref struct HdrByteReader(ReadOnlySpan<byte> data) {
 
-        private readonly ReadOnlySpan<byte> _data;
-        private int _position;
-
-        public HdrByteReader(ReadOnlySpan<byte> data) {
-            _data = data;
-            _position = 0;
-        }
+        private readonly ReadOnlySpan<byte> _data = data;
+        private int _position = 0;
 
         public bool TryReadLine(out ReadOnlySpan<byte> line) {
             if (_position >= _data.Length) {
@@ -425,12 +420,12 @@ internal static class HdrImageLoader {
                 return false;
             }
 
-            int start = _position;
+            var start = _position;
             while (_position < _data.Length && _data[_position] != (byte)'\n') {
                 _position++;
             }
 
-            int end = _position;
+            var end = _position;
             if (_position < _data.Length) {
                 _position++;
             }

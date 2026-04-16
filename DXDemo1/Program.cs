@@ -20,7 +20,7 @@ internal sealed class DX12Engine {
     private const int WindowWidth = 640;
     private const int WindowHeight = 480;
 
-    private HWND hwnd;
+    private HWND _hwnd;
 
     private unsafe void InitWindow(SafeHandle hins) {
         const string className = "DX12 Game";
@@ -35,7 +35,7 @@ internal sealed class DX12Engine {
             RegisterClass(wc);
         }
 
-        hwnd = CreateWindowEx(
+        _hwnd = CreateWindowEx(
             0,
             className,
             "DX12 Game Window",
@@ -49,13 +49,13 @@ internal sealed class DX12Engine {
             hins,
             null);
 
-        ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOW);
+        ShowWindow(_hwnd, SHOW_WINDOW_CMD.SW_SHOW);
     }
 
     private void RenderLoop() {
-        bool exit = false;
+        var exit = false;
         while (!exit) {
-            while (PeekMessage(out MSG msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
+            while (PeekMessage(out var msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
                 if (msg.message == WM_QUIT) {
                     exit = true;
                     break;

@@ -142,36 +142,17 @@ internal sealed class Camera {
     private const float FarZ = 1000f;            // 远平面到原点的距离
 
     // 模型矩阵，模型空间 -> 世界空间
-    private Matrix4x4 _modelMatrix;
+    private readonly Matrix4x4 _modelMatrix;
     // 观察矩阵，注意前两个参数是点，第三个参数才是向量
-    private Matrix4x4 _viewMatrix;
+    private Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
     // 投影矩阵(注意近平面和远平面距离不能 <= 0!)
-    private Matrix4x4 _projectionMatrix;
+    private readonly Matrix4x4 _projectionMatrix;
 
-    private void UpdateMVPMatrix() {
-        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection);
-    }
+    internal Matrix4x4 MVPMatrix => _modelMatrix * ViewMatrix * _projectionMatrix; // MVP 矩阵
 
-    internal Matrix4x4 MVPMatrix {
-        get {
-            UpdateMVPMatrix();
-            return _modelMatrix * _viewMatrix * _projectionMatrix; // MVP 矩阵
-        }
-    }
+    internal Matrix4x4 InverseViewMatrix => Matrix4x4.Invert(ViewMatrix, out var inverseView) ? inverseView : throw new InvalidOperationException("求逆失败");
 
-    internal Matrix4x4 InverseViewMatrix {
-        get {
-            UpdateMVPMatrix();
-            return Matrix4x4.Invert(_viewMatrix, out var inverseView) ? inverseView : throw new InvalidOperationException("求逆失败");
-        }
-    }
-
-    internal Matrix4x4 InverseProjectionMatrix {
-        get {
-            UpdateMVPMatrix();
-            return Matrix4x4.Invert(_projectionMatrix, out var inverseProjection) ? inverseProjection : throw new InvalidOperationException("求逆失败");
-        }
-    }
+    internal Matrix4x4 InverseProjectionMatrix => Matrix4x4.Invert(_projectionMatrix, out var inverseProjection) ? inverseProjection : throw new InvalidOperationException("求逆失败");
 
     internal Camera() {
         _eyePosition = new Vector3(1, 1, 1);
@@ -180,7 +161,6 @@ internal sealed class Camera {
 
         // 模型矩阵，这里设置成单位矩阵，是因为模型导入的时候已经是 y 轴朝上的了，无需再进行旋转
         _modelMatrix = Matrix4x4.Identity;
-        _viewMatrix = Matrix4x4.CreateLookAtLeftHanded(_eyePosition, _focusPosition, _upDirection); // 观察矩阵，世界空间 -> 观察空间
         _projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfViewLeftHanded(FovAngleY, AspectRatio, NearZ, FarZ); // 投影矩阵，观察空间 -> 齐次裁剪空间
 
         _viewDirection = Vector3.Normalize(_focusPosition - _eyePosition);
@@ -232,8 +212,8 @@ internal sealed class Camera {
         float deltaX = currentCursorPoint.X - _lastCursorPoint.X;
         float deltaY = currentCursorPoint.Y - _lastCursorPoint.Y;
 
-        float angleX = deltaX * (MathF.PI / 180.0f) * 0.25f;
-        float angleY = deltaY * (MathF.PI / 180.0f) * 0.25f;
+        var angleX = deltaX * (MathF.PI / 180.0f) * 0.25f;
+        var angleY = deltaY * (MathF.PI / 180.0f) * 0.25f;
 
         RotateByY(angleY);
         RotateByX(angleX);
@@ -317,7 +297,6 @@ internal sealed class DX12Engine {
 
     private const int FrameCount = 3;
     private static readonly float[] SkyBlue = [0.529411793f, 0.807843208f, 0.921568692f, 1f];
-    private static readonly float[] Black = [0f, 0f, 0f, 1f];
 
 
     // DX12 支持的所有功能版本，你的显卡最低需要支持 11
@@ -444,7 +423,7 @@ internal sealed class DX12Engine {
 
     private ID3D12PipelineState _modelPSO;
 
-    private D3D12_VIEWPORT _viewPort = new() {
+    private readonly D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
         TopLeftY = 0,
         Width = WindowWidth,
@@ -452,7 +431,7 @@ internal sealed class DX12Engine {
         MinDepth = D3D12_MIN_DEPTH,
         MaxDepth = D3D12_MAX_DEPTH
     };
-    private RECT _scissorRect = new() {
+    private readonly RECT _scissorRect = new() {
         left = 0,
         top = 0,
         right = WindowWidth,
@@ -633,7 +612,7 @@ internal sealed class DX12Engine {
     }
 
     private void STEP6_CreateFenceAndBarrier() {
-        _renderEvent = CreateEvent(null, false, false, null);
+        _renderEvent = CreateEvent(null, false, false);
 
         _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
@@ -796,16 +775,16 @@ internal sealed class DX12Engine {
 
         CalcModelNodeMatrix(modelScene.RootNode, modelMatrix);
 
-        int currentMeshVertexGroupOffset = 0;
+        var currentMeshVertexGroupOffset = 0;
         uint currentMeshIndexGroupOffset = 0;
 
-        for (int i = 0; i < modelScene.mNumMeshes; i++) {
+        for (var i = 0; i < modelScene.mNumMeshes; i++) {
             ref var mesh = ref modelScene.Meshes[i];
 
             if (mesh.mNumVertices == 0)
                 continue;
 
-            for (int j = 0; j < mesh.mNumVertices; j++) {
+            for (var j = 0; j < mesh.mNumVertices; j++) {
                 var newVertex = new Vertex {
                     Position = new(mesh.Vertices[j], 1.0f),
                 };
@@ -819,18 +798,14 @@ internal sealed class DX12Engine {
                     newVertex.TexCoordUV = new(-1.0f, -1.0f); // 默认纹理 UV 坐标，Pixel Shader 会进行处理
                 }
 
-                if (mesh.HasVertexColors(0)) {
-                    newVertex.Color = mesh.Colors(0)[j];
-                } else {
-                    newVertex.Color = new(1.0f, 1.0f, 1.0f, 1.0f);
-                }
+                newVertex.Color = mesh.HasVertexColors(0) ? mesh.Colors(0)[j] : new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
                 _vertexWeightsCountGroup.Add(0);
 
                 _vertexGroup.Add(newVertex);
             }
 
-            for (int j = 0; j < mesh.mNumFaces; j++) {
+            for (var j = 0; j < mesh.mNumFaces; j++) {
                 _indexGroup.Add(mesh.Faces[j].Indices[0]);
                 _indexGroup.Add(mesh.Faces[j].Indices[1]);
                 _indexGroup.Add(mesh.Faces[j].Indices[2]);
@@ -840,7 +815,7 @@ internal sealed class DX12Engine {
 
                 foreach (ref var currentBone in mesh.Bones) {
 
-                    int boneIndex = _boneNodeIndexGroup[currentBone.mName.ToString()];
+                    var boneIndex = _boneNodeIndexGroup[currentBone.mName.ToString()];
 
                     var meshToBoneSpaceMatrix = (Matrix4x4)currentBone.mOffsetMatrix;
 
@@ -867,7 +842,7 @@ internal sealed class DX12Engine {
                 var boneIndex = _boneNodeIndexGroup[$"_Mesh_{i}"];
 
                 var verticesSpan = CollectionsMarshal.AsSpan(_vertexGroup);
-                for (int j = 0; j < mesh.mNumVertices; j++) {
+                for (var j = 0; j < mesh.mNumVertices; j++) {
                     var vertexId = currentMeshVertexGroupOffset + j;
                     var weightsCount = _vertexWeightsCountGroup[vertexId];
 
@@ -896,7 +871,7 @@ internal sealed class DX12Engine {
         // 读取所有骨骼、网格数据完成后，对 BoneNode_TransformGroup 里面的所有矩阵进行转置，不转会渲染错误
         // 因为在 shader 中我们指定了 row_major 让 GPU 按行读取矩阵，但从 Assimp 获取并变换的矩阵是列主序的
         // 我们需要使用 XMMatrixTranspose 转置这些矩阵，让这些矩阵变成行主序
-        for (int i = 0; i < _boneNodeTransformGroup.Count; i++) {
+        for (var i = 0; i < _boneNodeTransformGroup.Count; i++) {
             _boneNodeTransformGroup[i] = Matrix4x4.Transpose(_boneNodeTransformGroup[i]);
         }
     }
@@ -936,7 +911,7 @@ internal sealed class DX12Engine {
 
     private void StartCommandRecord() {
         _commandAllocator.Reset();
-        _commandList.Reset(_commandAllocator, null);
+        _commandList.Reset(_commandAllocator);
     }
 
     private bool LoadTextureFromFile(string textureFilename) {
@@ -1056,13 +1031,13 @@ internal sealed class DX12Engine {
     private unsafe void CopyTextureDataToDefaultResource(int index) {
         var textureData = ArrayPool<byte>.Shared.Rent((int)_textureSize);
 
-        _wicBitmapSource.CopyPixels(default, _bytesPerRowSize, textureData);
+        _wicBitmapSource.CopyPixels(null, _bytesPerRowSize, textureData);
 
         _materialGroup[index].UploadTexture.Managed.Map(0, null, out var transferPointer);
 
-        int rowBytes = (int)_bytesPerRowSize;
-        byte* dstBasePtr = (byte*)transferPointer;
-        for (int i = 0; i < _textureHeight; i++) {
+        var rowBytes = (int)_bytesPerRowSize;
+        var dstBasePtr = (byte*)transferPointer;
+        for (var i = 0; i < _textureHeight; i++) {
             var srcRow = textureData.AsSpan().Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
@@ -1150,7 +1125,7 @@ internal sealed class DX12Engine {
     private unsafe void CopyDefaultTextureToDefaultResource(int index) {
         Span<byte> defaultTextureData = stackalloc byte[2 * 2 * 4];
 
-        for (int i = 0; i < 2 * 2; i++) {
+        for (var i = 0; i < 2 * 2; i++) {
             defaultTextureData[i * 4 + 0] = 255; // R
             defaultTextureData[i * 4 + 1] = 255; // G
             defaultTextureData[i * 4 + 2] = 255; // B
@@ -1159,8 +1134,8 @@ internal sealed class DX12Engine {
 
         _materialGroup[index].UploadTexture.Managed.Map(0, null, out var transferPointer);
 
-        byte* dstBasePtr = (byte*)transferPointer;
-        for (int i = 0; i < 2; i++) {
+        var dstBasePtr = (byte*)transferPointer;
+        for (var i = 0; i < 2; i++) {
             var srcRow = defaultTextureData.Slice(i * 8, 8);
             var dstRow = new Span<byte>(dstBasePtr + i * 256, 8);
             srcRow.CopyTo(dstRow);
@@ -1384,7 +1359,7 @@ internal sealed class DX12Engine {
     }
 
     private unsafe void STEP18_CreateCBVResource() {
-        uint cBufferWidth = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        var cBufferWidth = CeilToMultiple((uint)Unsafe.SizeOf<CBuffer>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -1760,10 +1735,10 @@ internal sealed class DX12Engine {
 
         _hdrTextureUploadMap.Managed.Map(0, null, out var transferPointer);
 
-        int rowBytes = (int)_bytesPerRowSize;
-        ReadOnlySpan<byte> allSrcData = MemoryMarshal.AsBytes<float>(_hdrMapData);
-        byte* dstBasePtr = (byte*)transferPointer;
-        for (int i = 0; i < _hdrMapHeight; i++) {
+        var rowBytes = (int)_bytesPerRowSize;
+        var allSrcData = MemoryMarshal.AsBytes(_hdrMapData);
+        var dstBasePtr = (byte*)transferPointer;
+        for (var i = 0; i < _hdrMapHeight; i++) {
             var srcRow = allSrcData.Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
@@ -1986,7 +1961,7 @@ internal sealed class DX12Engine {
     }
 
     private unsafe void STEP27_CreateSkyBoxConstantBuffer() {
-        uint cBufferWidth = CeilToMultiple((uint)Unsafe.SizeOf<Matrix4x4>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        var cBufferWidth = CeilToMultiple((uint)Unsafe.SizeOf<Matrix4x4>(), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
         var cbvResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -2049,9 +2024,9 @@ internal sealed class DX12Engine {
             boneAnimeTranslationMatrix = Matrix4x4.CreateTranslation(animeNode.PositionKeys[0].mValue);
         } else {
 
-            int nextIndex = (int)(animeNode.mNumPositionKeys - 1);
+            var nextIndex = (int)(animeNode.mNumPositionKeys - 1);
 
-            for (int i = 1; i < animeNode.mNumPositionKeys; i++) {
+            for (var i = 1; i < animeNode.mNumPositionKeys; i++) {
                 if (animeTimeInTicks < animeNode.PositionKeys[i].mTime) {
                     nextIndex = i;
                     break;
@@ -2060,9 +2035,9 @@ internal sealed class DX12Engine {
             Vector3 lastTickVec = animeNode.PositionKeys[nextIndex - 1].mValue;
             Vector3 nextTickVec = animeNode.PositionKeys[nextIndex].mValue;
 
-            double deltaTime = animeNode.PositionKeys[nextIndex].mTime - animeNode.PositionKeys[nextIndex - 1].mTime;
-            double differ = animeTimeInTicks - animeNode.PositionKeys[nextIndex - 1].mTime;
-            double factor = differ / deltaTime;
+            var deltaTime = animeNode.PositionKeys[nextIndex].mTime - animeNode.PositionKeys[nextIndex - 1].mTime;
+            var differ = animeTimeInTicks - animeNode.PositionKeys[nextIndex - 1].mTime;
+            var factor = differ / deltaTime;
 
             boneAnimeTranslationMatrix = Matrix4x4.CreateTranslation(Vector3.Lerp(lastTickVec, nextTickVec, (float)factor));
         }
@@ -2071,9 +2046,9 @@ internal sealed class DX12Engine {
             boneAnimeRotationMatrix = Matrix4x4.CreateFromQuaternion(animeNode.RotationKeys[0].mValue);
         } else {
 
-            int nextIndex = (int)(animeNode.mNumRotationKeys - 1);
+            var nextIndex = (int)(animeNode.mNumRotationKeys - 1);
 
-            for (int i = 1; i < animeNode.mNumRotationKeys; i++) {
+            for (var i = 1; i < animeNode.mNumRotationKeys; i++) {
                 if (animeTimeInTicks < animeNode.RotationKeys[i].mTime) {
                     nextIndex = i;
                     break;
@@ -2083,9 +2058,9 @@ internal sealed class DX12Engine {
             Quaternion lastTickQuat = animeNode.RotationKeys[nextIndex - 1].mValue;
             Quaternion nextTickQuat = animeNode.RotationKeys[nextIndex].mValue;
 
-            double deltaTime = animeNode.RotationKeys[nextIndex].mTime - animeNode.RotationKeys[nextIndex - 1].mTime;
-            double differ = animeTimeInTicks - animeNode.RotationKeys[nextIndex - 1].mTime;
-            double factor = differ / deltaTime;
+            var deltaTime = animeNode.RotationKeys[nextIndex].mTime - animeNode.RotationKeys[nextIndex - 1].mTime;
+            var differ = animeTimeInTicks - animeNode.RotationKeys[nextIndex - 1].mTime;
+            var factor = differ / deltaTime;
 
             var rotationQuaternion = Quaternion.Slerp(lastTickQuat, nextTickQuat, (float)factor);
             boneAnimeRotationMatrix = Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(rotationQuaternion));
@@ -2096,9 +2071,9 @@ internal sealed class DX12Engine {
             boneAnimeScalingMatrix = Matrix4x4.CreateScale(animeNode.ScalingKeys[0].mValue);
         } else {
 
-            int nextIndex = (int)(animeNode.mNumScalingKeys - 1);
+            var nextIndex = (int)(animeNode.mNumScalingKeys - 1);
 
-            for (int i = 1; i < animeNode.mNumScalingKeys; i++) {
+            for (var i = 1; i < animeNode.mNumScalingKeys; i++) {
                 if (animeTimeInTicks < animeNode.ScalingKeys[i].mTime) {
                     nextIndex = i;
                     break;
@@ -2108,9 +2083,9 @@ internal sealed class DX12Engine {
             Vector3 lastTickVec = animeNode.ScalingKeys[nextIndex - 1].mValue;
             Vector3 nextTickVec = animeNode.ScalingKeys[nextIndex].mValue;
 
-            double deltaTime = animeNode.ScalingKeys[nextIndex].mTime - animeNode.ScalingKeys[nextIndex - 1].mTime;
-            double differ = animeTimeInTicks - animeNode.ScalingKeys[nextIndex - 1].mTime;
-            double factor = differ / deltaTime;
+            var deltaTime = animeNode.ScalingKeys[nextIndex].mTime - animeNode.ScalingKeys[nextIndex - 1].mTime;
+            var differ = animeTimeInTicks - animeNode.ScalingKeys[nextIndex - 1].mTime;
+            var factor = differ / deltaTime;
 
             boneAnimeScalingMatrix = Matrix4x4.CreateScale(Vector3.Lerp(lastTickVec, nextTickVec, (float)factor));
         }
@@ -2123,7 +2098,7 @@ internal sealed class DX12Engine {
     private void UpdateAnimeNodeMatrix() {
         ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
 
-        double animeTimeInTicks = _animeTime * _animeTPS;
+        var animeTimeInTicks = _animeTime * _animeTPS;
         foreach (ref var animeNode in modelScene.Animations[_animationIndex - 1].Channels) {
             var boneName = animeNode.mNodeName.ToString();
             _animeNodeSQTMatrixGroup[boneName] = CalcTickBoneMatrix(animeTimeInTicks, animeNode);
@@ -2152,7 +2127,7 @@ internal sealed class DX12Engine {
 
     private void TransformMeshToBoneFinalMatrix() {
         ref var modelScene = ref Unsafe.AsRef<Scene>(_modelScene);
-        for (int i = 0; i < modelScene.mNumMeshes; i++) {
+        for (var i = 0; i < modelScene.mNumMeshes; i++) {
             ref var mesh = ref modelScene.Meshes[i];
 
             foreach (ref var currentBone in mesh.Bones) {
@@ -2269,7 +2244,7 @@ internal sealed class DX12Engine {
     }
 
     private void STEP28_RenderLoop() {
-        bool exit = false;
+        var exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
                 [new(_renderEvent.DangerousGetHandle())],
@@ -2282,7 +2257,7 @@ internal sealed class DX12Engine {
                     Render();
                     break;
                 case 1: // ActiveEvent 是 1，说明渲染事件未完成，CPU 主线程同时处理窗口消息，防止界面假死
-                    while (PeekMessage(out MSG msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
+                    while (PeekMessage(out var msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
                         if (msg.message == WM_QUIT) {
                             exit = true;
                             break;

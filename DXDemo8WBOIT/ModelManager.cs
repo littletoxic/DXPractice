@@ -40,9 +40,9 @@ internal sealed class ModelManager {
 
     public void CreateBlock() {
         // 两层泥土地基，y 是高度
-        for (int x = 0; x < 10; x++) {
-            for (int z = -4; z < 10; z++) {
-                for (int y = -2; y < 0; y++) {
+        for (var x = 0; x < 10; x++) {
+            for (var z = -4; z < 10; z++) {
+                for (var y = -2; y < 0; y++) {
                     var dirt = new Dirt {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, z)
                     };
@@ -52,8 +52,8 @@ internal sealed class ModelManager {
         }
 
         // 一层草方块地基
-        for (int x = 0; x < 10; x++) {
-            for (int z = -4; z < 10; z++) {
+        for (var x = 0; x < 10; x++) {
+            for (var z = -4; z < 10; z++) {
                 var grass = new Grass {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 0, z)
                 };
@@ -62,8 +62,8 @@ internal sealed class ModelManager {
         }
 
         // 4x4 木板房基
-        for (int x = 3; x < 7; x++) {
-            for (int z = 3; z < 7; z++) {
+        for (var x = 3; x < 7; x++) {
+            for (var z = 3; z < 7; z++) {
                 var plank = new PlanksOak() {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 2, z)
                 };
@@ -73,56 +73,56 @@ internal sealed class ModelManager {
 
         // 8 柱原木 
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(3, y, 2)
             };
             _opaqueGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, y, 3)
             };
             _opaqueGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(6, y, 2)
             };
             _opaqueGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, y, 3)
             };
             _opaqueGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(7, y, 6)
             };
             _opaqueGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(6, y, 7)
             };
             _opaqueGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(2, y, 6)
             };
             _opaqueGroup.Add(logOak);
         }
 
-        for (int y = 1; y < 7; y++) {
+        for (var y = 1; y < 7; y++) {
             var logOak = new LogOak {
                 ModelMatrix = Matrix4x4.CreateTranslation(3, y, 7)
             };
@@ -141,8 +141,8 @@ internal sealed class ModelManager {
             };
             _opaqueGroup.Add(plank);
 
-            for (int y = 5; y < 7; y++) {
-                for (int x = 4; x < 6; x++) {
+            for (var y = 5; y < 7; y++) {
+                for (var x = 4; x < 6; x++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, 2)
                     };
@@ -150,8 +150,8 @@ internal sealed class ModelManager {
                 }
             }
 
-            for (int y = 2; y < 4; y++) {
-                for (int z = 4; z < 6; z++) {
+            for (var y = 2; y < 4; y++) {
+                for (var z = 4; z < 6; z++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(2, y, z)
                     };
@@ -159,8 +159,8 @@ internal sealed class ModelManager {
                 }
             }
 
-            for (int y = 2; y < 4; y++) {
-                for (int x = 4; x < 6; x++) {
+            for (var y = 2; y < 4; y++) {
+                for (var x = 4; x < 6; x++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(x, y, 7)
                     };
@@ -168,8 +168,8 @@ internal sealed class ModelManager {
                 }
             }
 
-            for (int y = 2; y < 4; y++) {
-                for (int z = 4; z < 6; z++) {
+            for (var y = 2; y < 4; y++) {
+                for (var z = 4; z < 6; z++) {
                     plank = new PlanksOak {
                         ModelMatrix = Matrix4x4.CreateTranslation(7, y, z)
                     };
@@ -229,8 +229,8 @@ internal sealed class ModelManager {
         }
 
         // 4x4 木板房顶
-        for (int x = 3; x < 7; x++) {
-            for (int z = 3; z < 7; z++) {
+        for (var x = 3; x < 7; x++) {
+            for (var z = 3; z < 7; z++) {
                 var plank = new PlanksOak {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 6, z)
                 };
@@ -241,14 +241,14 @@ internal sealed class ModelManager {
         // 屋顶
 
         // 第一层
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 6, 1)
             };
             _opaqueGroup.Add(stair);
         }
 
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             // 旋转橡木台阶用的模型矩阵
             // 这里本来是可以不用 XMMatrixTranslation(-0.5, -0.5, -0.5) 平移到模型中心的
             // 因为作者本人 (我) 的设计失误，把模型坐标系原点建立在模型左下角了 (见上文的 VertexArray)
@@ -265,7 +265,7 @@ internal sealed class ModelManager {
             _opaqueGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI / 2.0f);            // 旋转 90°
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -277,7 +277,7 @@ internal sealed class ModelManager {
             _opaqueGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI + MathF.PI / 2.0f); // 旋转 270°
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -290,14 +290,14 @@ internal sealed class ModelManager {
         }
 
         // 第二层
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             var stair = new PlanksOakSolidStair {
                 ModelMatrix = Matrix4x4.CreateTranslation(x, 7, 2)
             };
             _opaqueGroup.Add(stair);
         }
 
-        for (int x = 3; x < 7; x++) {
+        for (var x = 3; x < 7; x++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI);
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -309,7 +309,7 @@ internal sealed class ModelManager {
             _opaqueGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI / 2.0f);
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -321,7 +321,7 @@ internal sealed class ModelManager {
             _opaqueGroup.Add(stair);
         }
 
-        for (int z = 3; z < 7; z++) {
+        for (var z = 3; z < 7; z++) {
             var transform = Matrix4x4.CreateTranslation(-0.5f, -0.5f, -0.5f);
             transform *= Matrix4x4.CreateRotationY(MathF.PI + MathF.PI / 2.0f);
             transform *= Matrix4x4.CreateTranslation(0.5f, 0.5f, 0.5f);
@@ -334,8 +334,8 @@ internal sealed class ModelManager {
         }
 
         // 补上屋顶空位
-        for (int x = 3; x < 7; x++) {
-            for (int z = 3; z < 7; z++) {
+        for (var x = 3; x < 7; x++) {
+            for (var z = 3; z < 7; z++) {
                 var plank = new PlanksOak {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, 7, z)
                 };
@@ -378,14 +378,14 @@ internal sealed class ModelManager {
         _transparentGroup.Add(bed);
 
         // 玻璃
-        for (int y = 4; y < 6; y++) {
-            for (int z = 4; z < 6; z++) {
+        for (var y = 4; y < 6; y++) {
+            for (var z = 4; z < 6; z++) {
                 var glass = new GlassLightBlue {
                     ModelMatrix = Matrix4x4.CreateTranslation(2, y, z)
                 };
                 _translucenceGroup.Add(glass);
             }
-            for (int z = 4; z < 6; z++) {
+            for (var z = 4; z < 6; z++) {
                 var glass = new GlassLightBlue {
                     ModelMatrix = Matrix4x4.CreateTranslation(7, y, z)
                 };
@@ -393,8 +393,8 @@ internal sealed class ModelManager {
             }
         }
 
-        for (int x = 4; x < 6; x++) {
-            for (int y = 4; y < 6; y++) {
+        for (var x = 4; x < 6; x++) {
+            for (var y = 4; y < 6; y++) {
                 var glass = new GlassLightBlue {
                     ModelMatrix = Matrix4x4.CreateTranslation(x, y, 7)
                 };

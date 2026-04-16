@@ -8,10 +8,6 @@ namespace Assimp;
 
 internal static partial class PInvoke {
     internal const string _AI_MATKEY_NAME_BASE = "?mat.name";
-
-    internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) {
-        return ref *ImportFile(pFile, pFlags);
-    }
 }
 
 internal partial struct AssimpString {
@@ -32,8 +28,6 @@ internal partial struct Scene {
 }
 
 internal partial struct Mesh {
-    internal readonly unsafe PtrSpan<Bone> Bones => new(mBones, mNumBones);
-
     internal readonly unsafe bool HasTextureCoords(uint index) {
         if (index >= AI_MAX_NUMBER_OF_TEXTURECOORDS) {
             return false;

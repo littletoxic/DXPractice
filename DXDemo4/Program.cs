@@ -178,7 +178,7 @@ internal sealed class DX12Engine {
     private ID3D12Resource _vertexResource;
     private D3D12_VERTEX_BUFFER_VIEW _vertexBufferView;
 
-    private D3D12_VIEWPORT _viewPort = new() {
+    private readonly D3D12_VIEWPORT _viewPort = new() {
         TopLeftX = 0,
         TopLeftY = 0,
         Width = WindowWidth,
@@ -186,7 +186,7 @@ internal sealed class DX12Engine {
         MinDepth = D3D12_MIN_DEPTH,
         MaxDepth = D3D12_MAX_DEPTH
     };
-    private RECT _scissorRect = new() {
+    private readonly RECT _scissorRect = new() {
         left = 0,
         top = 0,
         right = WindowWidth,
@@ -324,7 +324,7 @@ internal sealed class DX12Engine {
     }
 
     private void CreateFenceAndBarrier() {
-        _renderEvent = CreateEvent(null, false, false, null);
+        _renderEvent = CreateEvent(null, false, false);
 
         _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
@@ -461,13 +461,13 @@ internal sealed class DX12Engine {
     private unsafe void CopyTextureDataToDefaultResource() {
         var textureData = ArrayPool<byte>.Shared.Rent((int)_textureSize);
 
-        _wicBitmapSource.CopyPixels(default, _bytesPerRowSize, textureData);
+        _wicBitmapSource.CopyPixels(null, _bytesPerRowSize, textureData);
 
         _uploadTextureResource.Managed.Map(0, null, out var transferPointer);
 
-        int rowBytes = (int)_bytesPerRowSize;
-        byte* dstBasePtr = (byte*)transferPointer;
-        for (int i = 0; i < _textureHeight; i++) {
+        var rowBytes = (int)_bytesPerRowSize;
+        var dstBasePtr = (byte*)transferPointer;
+        for (var i = 0; i < _textureHeight; i++) {
             var srcRow = textureData.AsSpan().Slice(i * rowBytes, rowBytes);
             var dstRow = new Span<byte>(dstBasePtr + i * _uploadResourceRowSize, rowBytes);
             srcRow.CopyTo(dstRow);
@@ -499,7 +499,7 @@ internal sealed class DX12Engine {
         };
 
         _commandAllocator.Reset();
-        _commandList.Reset(_commandAllocator, null);
+        _commandList.Reset(_commandAllocator);
 
         _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
         _commandList.Close();
@@ -598,7 +598,7 @@ internal sealed class DX12Engine {
         var inputElementDesc = stackalloc D3D12_INPUT_ELEMENT_DESC[2];
 
         var semanticNamePosition = "POSITION"u8;
-        byte* pSemanticNamePosition = stackalloc byte[semanticNamePosition.Length + 1];
+        var pSemanticNamePosition = stackalloc byte[semanticNamePosition.Length + 1];
         semanticNamePosition.CopyTo(new Span<byte>(pSemanticNamePosition, semanticNamePosition.Length));
         pSemanticNamePosition[semanticNamePosition.Length] = 0;
 
@@ -614,7 +614,7 @@ internal sealed class DX12Engine {
         };
 
         var semanticNameTexCoord = "TEXCOORD"u8;
-        byte* pSemanticNameTexCoord = stackalloc byte[semanticNameTexCoord.Length + 1];
+        var pSemanticNameTexCoord = stackalloc byte[semanticNameTexCoord.Length + 1];
         semanticNameTexCoord.CopyTo(new Span<byte>(pSemanticNameTexCoord, semanticNameTexCoord.Length));
         pSemanticNameTexCoord[semanticNameTexCoord.Length] = 0;
 
@@ -740,7 +740,7 @@ internal sealed class DX12Engine {
         _rtvHandle.ptr += _frameIndex * _rtvDescriptorSize;
 
         _commandAllocator.Reset();
-        _commandList.Reset(_commandAllocator, null);
+        _commandList.Reset(_commandAllocator);
 
         _beginBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_beginBarrier]);
@@ -751,7 +751,7 @@ internal sealed class DX12Engine {
         _commandList.RSSetViewports([_viewPort]);
         _commandList.RSSetScissorRects([_scissorRect]);
 
-        _commandList.OMSetRenderTargets(1, _rtvHandle, false, null);
+        _commandList.OMSetRenderTargets(1, _rtvHandle, false);
 
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue, 0, null);
 
@@ -780,7 +780,7 @@ internal sealed class DX12Engine {
     }
 
     private void RenderLoop() {
-        bool exit = false;
+        var exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
                 [new(_renderEvent.DangerousGetHandle())],
@@ -793,7 +793,7 @@ internal sealed class DX12Engine {
                     Render();
                     break;
                 case 1: // ActiveEvent 是 1，说明渲染事件未完成，CPU 主线程同时处理窗口消息，防止界面假死
-                    while (PeekMessage(out MSG msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
+                    while (PeekMessage(out var msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
                         if (msg.message == WM_QUIT) {
                             exit = true;
                             break;

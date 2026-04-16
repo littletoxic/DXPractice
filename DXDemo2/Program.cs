@@ -190,7 +190,7 @@ internal sealed unsafe class DX12Engine {
     }
 
     private void CreateFenceAndBarrier() {
-        _renderEvent = CreateEvent(null, false, true, null);
+        _renderEvent = CreateEvent(null, false, true);
 
         _d3d12Device.CreateFence(0, D3D12_FENCE_FLAG_NONE, out _fence);
 
@@ -212,12 +212,12 @@ internal sealed unsafe class DX12Engine {
         _rtvHandle.ptr += _frameIndex * _rtvDescriptorSize;
 
         _commandAllocator.Reset();
-        _commandList.Reset(_commandAllocator, null);
+        _commandList.Reset(_commandAllocator);
 
         _beginBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_beginBarrier]);
 
-        _commandList.OMSetRenderTargets(1, _rtvHandle, false, null);
+        _commandList.OMSetRenderTargets(1, _rtvHandle, false);
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue, 0, null);
 
         _endBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
@@ -236,7 +236,7 @@ internal sealed unsafe class DX12Engine {
     }
 
     private void RenderLoop() {
-        bool exit = false;
+        var exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
                 [new(_renderEvent.DangerousGetHandle())],
@@ -249,7 +249,7 @@ internal sealed unsafe class DX12Engine {
                     Render();
                     break;
                 case 1: // ActiveEvent 是 1，说明渲染事件未完成，CPU 主线程同时处理窗口消息，防止界面假死
-                    while (PeekMessage(out MSG msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
+                    while (PeekMessage(out var msg, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE)) {
                         if (msg.message == WM_QUIT) {
                             exit = true;
                             break;
