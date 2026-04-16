@@ -5,9 +5,7 @@ namespace DXDemo8WBOIT.Models;
 
 internal sealed class CraftingTable : SolidBlock {
 
-    public CraftingTable() {
-        _textureNameSet = ["crafting_table_front", "crafting_table_side", "crafting_table_top"];
-    }
+    public CraftingTable() => _textureNameSet = ["crafting_table_front", "crafting_table_side", "crafting_table_top"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);

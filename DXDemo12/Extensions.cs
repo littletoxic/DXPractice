@@ -27,9 +27,7 @@ internal static partial class PInvoke {
         return hr;
     }
 
-    internal static unsafe PCSTR CreatePCSTR(string str) {
-        return (PCSTR)(byte*)Marshal.StringToHGlobalAnsi(str);
-    }
+    internal static unsafe PCSTR CreatePCSTR(string str) => (PCSTR)(byte*)Marshal.StringToHGlobalAnsi(str);
 }
 
 internal sealed unsafe class ComPtr<T>(T managed) : IDisposable {

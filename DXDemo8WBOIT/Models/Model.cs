@@ -23,9 +23,7 @@ internal abstract class Model {
     // 纹理名 - GPU 句柄映射表，用于索引纹理，设置根参数
     public IReadOnlyDictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> TextureGPUHandleMap { get; private set; }
 
-    public void BuildTextureGPUHandleMap(IReadOnlyDictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> globalTextureGPUHandleMap) {
-        TextureGPUHandleMap = globalTextureGPUHandleMap.Where(kv => _textureNameSet.Contains(kv.Key)).ToFrozenDictionary();
-    }
+    public void BuildTextureGPUHandleMap(IReadOnlyDictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> globalTextureGPUHandleMap) => TextureGPUHandleMap = globalTextureGPUHandleMap.Where(kv => _textureNameSet.Contains(kv.Key)).ToFrozenDictionary();
 
     public Matrix4x4 ModelMatrix { get; set; } = Matrix4x4.Identity;
 

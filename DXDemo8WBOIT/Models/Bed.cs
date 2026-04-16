@@ -73,9 +73,7 @@ internal sealed class Bed : Model {
         28, 29, 30, 28, 30, 31
     ];
 
-    public Bed() {
-        _textureNameSet = ["bed_feet_end", "bed_feet_side", "bed_feet_top", "bed_head_top", "bed_head_side", "bed_head_end"];
-    }
+    public Bed() => _textureNameSet = ["bed_feet_end", "bed_feet_side", "bed_feet_top", "bed_head_top", "bed_head_side", "bed_head_end"];
 
     public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
 

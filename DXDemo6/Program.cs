@@ -108,9 +108,7 @@ internal static class CallBackWrapper {
     internal static Func<HWND, uint, WPARAM, LPARAM, LRESULT> BrokerFunc { get; set; }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
-    internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
-        return BrokerFunc(hwnd, msg, wParam, lParam);
-    }
+    internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) => BrokerFunc(hwnd, msg, wParam, lParam);
 }
 
 internal sealed class Camera {
@@ -189,9 +187,7 @@ internal sealed class Camera {
         _focusPosition = _eyePosition + _focalLength * _viewDirection;
     }
 
-    internal void UpdateLastCursorPos() {
-        GetCursorPos(out _lastCursorPoint);
-    }
+    internal void UpdateLastCursorPos() => GetCursorPos(out _lastCursorPoint);
 
     // 当鼠标左键长按并移动时，旋转摄像机视角
     internal void CameraRotate() {
@@ -526,10 +522,9 @@ internal sealed class DX12Engine {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint CeilToMultiple(uint value, uint multiple) {
+    private static uint CeilToMultiple(uint value, uint multiple) =>
         // assumes `multiple` is power-of-two (true for D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
-        return (value + multiple - 1) & ~(multiple - 1);
-    }
+        (value + multiple - 1) & ~(multiple - 1);
 
     private void CreateUploadAndDefaultResource() {
         _bytesPerRowSize = (_textureWidth * _bitsPerPixel + 7) / 8;
@@ -982,9 +977,7 @@ internal sealed class DX12Engine {
         _indexBufferView.Format = DXGI_FORMAT_R32_UINT;
     }
 
-    private unsafe void UpdateConstantBuffer() {
-        Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
-    }
+    private unsafe void UpdateConstantBuffer() => Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
 
     private unsafe void Render() {
         UpdateConstantBuffer();

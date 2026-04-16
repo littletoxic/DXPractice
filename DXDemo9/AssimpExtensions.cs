@@ -9,9 +9,7 @@ namespace Assimp;
 internal static partial class PInvoke {
     internal const string _AI_MATKEY_NAME_BASE = "?mat.name";
 
-    internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) {
-        return ref *ImportFile(pFile, pFlags);
-    }
+    internal static unsafe ref Scene ImportFileR(string pFile, uint pFlags) => ref *ImportFile(pFile, pFlags);
 }
 
 internal partial struct AssimpString {

@@ -171,9 +171,7 @@ internal class Door : Model {
         92, 93, 94, 92, 94, 95
     ];
 
-    public Door() {
-        _textureNameSet = ["door_wood_lower", "door_wood_upper"];
-    }
+    public Door() => _textureNameSet = ["door_wood_lower", "door_wood_upper"];
 
     public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
 

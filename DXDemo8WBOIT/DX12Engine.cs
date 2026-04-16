@@ -532,10 +532,9 @@ internal sealed class DX12Engine {
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint CeilToMultiple(uint value, uint multiple) {
+    private static uint CeilToMultiple(uint value, uint multiple) =>
         // assumes `multiple` is power-of-two (true for D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
-        return (value + multiple - 1) & ~(multiple - 1);
-    }
+        (value + multiple - 1) & ~(multiple - 1);
 
     private void CreateUploadAndDefaultResource(TextureMapInfo info) {
         _bytesPerRowSize = (_textureWidth * _bitsPerPixel + 7) / 8;
@@ -1245,9 +1244,7 @@ internal sealed class DX12Engine {
     }
 
 
-    private unsafe void UpdateConstantBuffer() {
-        Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
-    }
+    private unsafe void UpdateConstantBuffer() => Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
 
     private static readonly float[] WBOITAccumClear = [0, 0, 0, 0];
     private static readonly float[] WBOITRevealClear = [1, 0, 0, 0];

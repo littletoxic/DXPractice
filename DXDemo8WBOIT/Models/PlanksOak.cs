@@ -5,9 +5,7 @@ namespace DXDemo8WBOIT.Models;
 
 internal sealed class PlanksOak : SolidBlock {
 
-    public PlanksOak() {
-        _textureNameSet = ["planks_oak"];
-    }
+    public PlanksOak() => _textureNameSet = ["planks_oak"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);

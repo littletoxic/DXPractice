@@ -4,9 +4,7 @@ using Windows.Win32.Graphics.Direct3D12;
 namespace DXDemo8WBOIT.Models;
 
 internal sealed class GlassLightBlue : SolidBlock {
-    public GlassLightBlue() {
-        _textureNameSet = ["glass_light_blue"];
-    }
+    public GlassLightBlue() => _textureNameSet = ["glass_light_blue"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);

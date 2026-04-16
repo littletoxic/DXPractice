@@ -5,9 +5,7 @@ namespace DXDemo8WBOIT.Models;
 
 internal sealed class Grass : SolidBlock {
 
-    public Grass() {
-        _textureNameSet = ["grass_side", "grass_top", "dirt"];
-    }
+    public Grass() => _textureNameSet = ["grass_side", "grass_top", "dirt"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);

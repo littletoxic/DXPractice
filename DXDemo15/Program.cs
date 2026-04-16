@@ -111,9 +111,7 @@ internal static class CallBackWrapper {
     internal static Func<HWND, uint, WPARAM, LPARAM, LRESULT> BrokerFunc { get; set; }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
-    internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
-        return BrokerFunc(hwnd, msg, wParam, lParam);
-    }
+    internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) => BrokerFunc(hwnd, msg, wParam, lParam);
 }
 
 internal sealed class Camera {
@@ -190,9 +188,7 @@ internal sealed class Camera {
         _focusPosition = _eyePosition + _focalLength * _viewDirection;
     }
 
-    internal void UpdateLastCursorPos() {
-        GetCursorPos(out _lastCursorPoint);
-    }
+    internal void UpdateLastCursorPos() => GetCursorPos(out _lastCursorPoint);
 
     // 当鼠标左键长按并移动时，旋转摄像机视角
     internal void CameraRotate() {
@@ -1345,8 +1341,8 @@ internal sealed class DX12Engine {
 
         _blockGroup.EnsureCapacity(5 * 9 * 25);
 
-        for (var y = -12; y <= 12; y += 6)
-            for (var z = -24; z <= 24; z += 6)
+        for (var y = -12; y <= 12; y += 6) {
+            for (var z = -24; z <= 24; z += 6) {
                 for (var x = 0; x < 25; x++) {
                     float blockX = 2 * x - 25;
                     float blockY = y + 2 * (x % 3) - 2;
@@ -1355,7 +1351,8 @@ internal sealed class DX12Engine {
 
                     _blockGroup.Add(new(new(blockX, blockY, blockZ), blockTypeIndex));
                 }
-
+            }
+        }
 
         var instanceResourceDesc = new D3D12_RESOURCE_DESC() {
             Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -1388,9 +1385,7 @@ internal sealed class DX12Engine {
         };
     }
 
-    private unsafe void UpdateConstantBuffer() {
-        Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
-    }
+    private unsafe void UpdateConstantBuffer() => Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
 
     private unsafe void Render() {
         UpdateConstantBuffer();

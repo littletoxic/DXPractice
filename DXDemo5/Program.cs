@@ -419,10 +419,9 @@ internal sealed class DX12Engine {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint CeilToMultiple(uint value, uint multiple) {
+    private static uint CeilToMultiple(uint value, uint multiple) =>
         // assumes `multiple` is power-of-two (true for D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
-        return (value + multiple - 1) & ~(multiple - 1);
-    }
+        (value + multiple - 1) & ~(multiple - 1);
 
     private void CreateUploadAndDefaultResource() {
         _bytesPerRowSize = (_textureWidth * _bitsPerPixel + 7) / 8;

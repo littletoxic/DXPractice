@@ -41,18 +41,14 @@ internal static class HdrImageLoader {
     private const string SupportedFormat = "32-bit_rle_rgbe";
     private const string SupportedLayout = "-Y +X";
 
-    public static bool IsHdr(string path) {
-        return IsHdr(File.ReadAllBytes(path));
-    }
+    public static bool IsHdr(string path) => IsHdr(File.ReadAllBytes(path));
 
     public static bool IsHdr(ReadOnlySpan<byte> data) {
         var reader = new HdrByteReader(data);
         return TryReadSignature(ref reader);
     }
 
-    public static HdrImageInfo ReadInfo(string path) {
-        return ReadInfo(File.ReadAllBytes(path));
-    }
+    public static HdrImageInfo ReadInfo(string path) => ReadInfo(File.ReadAllBytes(path));
 
     public static HdrImageInfo ReadInfo(ReadOnlySpan<byte> data) {
         if (!TryReadInfo(data, out var info, out var error)) {
@@ -75,9 +71,7 @@ internal static class HdrImageLoader {
         }
     }
 
-    public static HdrImage Load(string path, HdrLoadOptions options = null) {
-        return Load(File.ReadAllBytes(path), options);
-    }
+    public static HdrImage Load(string path, HdrLoadOptions options = null) => Load(File.ReadAllBytes(path), options);
 
     public static HdrImage Load(ReadOnlySpan<byte> data, HdrLoadOptions options = null) {
         options ??= new HdrLoadOptions();
@@ -267,9 +261,7 @@ internal static class HdrImageLoader {
         return value[start..(end + 1)];
     }
 
-    private static bool IsAsciiWhitespace(byte value) {
-        return value is (byte)' ' or (byte)'\t' or (byte)'\r';
-    }
+    private static bool IsAsciiWhitespace(byte value) => value is (byte)' ' or (byte)'\t' or (byte)'\r';
 
     private static void DecodeImage(ref HdrByteReader reader, HdrImageInfo info, int requestedChannels, float[] destination) {
         if (!info.UsesScanlineRle) {

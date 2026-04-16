@@ -108,9 +108,7 @@ internal static class CallBackWrapper {
     internal static Func<HWND, uint, WPARAM, LPARAM, LRESULT> BrokerFunc { get; set; }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
-    internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) {
-        return BrokerFunc(hwnd, msg, wParam, lParam);
-    }
+    internal static LRESULT CallBackFunc(HWND hwnd, uint msg, WPARAM wParam, LPARAM lParam) => BrokerFunc(hwnd, msg, wParam, lParam);
 }
 
 internal sealed class Camera {
@@ -187,9 +185,7 @@ internal sealed class Camera {
         _focusPosition = _eyePosition + _focalLength * _viewDirection;
     }
 
-    internal void UpdateLastCursorPos() {
-        GetCursorPos(out _lastCursorPoint);
-    }
+    internal void UpdateLastCursorPos() => GetCursorPos(out _lastCursorPoint);
 
     // 当鼠标左键长按并移动时，旋转摄像机视角
     internal void CameraRotate() {
@@ -231,9 +227,7 @@ internal abstract class Model {
     // 纹理名 - GPU 句柄映射表，用于索引纹理，设置根参数
     public IReadOnlyDictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> TextureGPUHandleMap { get; private set; }
 
-    public void BuildTextureGPUHandleMap(IReadOnlyDictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> globalTextureGPUHandleMap) {
-        TextureGPUHandleMap = globalTextureGPUHandleMap.Where(kv => _textureNameSet.Contains(kv.Key)).ToFrozenDictionary();
-    }
+    public void BuildTextureGPUHandleMap(IReadOnlyDictionary<string, D3D12_GPU_DESCRIPTOR_HANDLE> globalTextureGPUHandleMap) => TextureGPUHandleMap = globalTextureGPUHandleMap.Where(kv => _textureNameSet.Contains(kv.Key)).ToFrozenDictionary();
 
     public Matrix4x4 ModelMatrix { get; set; } = Matrix4x4.Identity;
 
@@ -512,9 +506,7 @@ internal abstract class SolidStair : Model {
 
 internal sealed class Dirt : SolidBlock {
 
-    public Dirt() {
-        _textureNameSet = ["dirt"];
-    }
+    public Dirt() => _textureNameSet = ["dirt"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -528,9 +520,7 @@ internal sealed class Dirt : SolidBlock {
 
 internal sealed class PlanksOak : SolidBlock {
 
-    public PlanksOak() {
-        _textureNameSet = ["planks_oak"];
-    }
+    public PlanksOak() => _textureNameSet = ["planks_oak"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -544,9 +534,7 @@ internal sealed class PlanksOak : SolidBlock {
 
 internal sealed class Furnace : SolidBlock {
 
-    public Furnace() {
-        _textureNameSet = ["furnace_front_off", "furnace_side", "furnace_top"];
-    }
+    public Furnace() => _textureNameSet = ["furnace_front_off", "furnace_side", "furnace_top"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -568,9 +556,7 @@ internal sealed class Furnace : SolidBlock {
 
 internal sealed class CraftingTable : SolidBlock {
 
-    public CraftingTable() {
-        _textureNameSet = ["crafting_table_front", "crafting_table_side", "crafting_table_top"];
-    }
+    public CraftingTable() => _textureNameSet = ["crafting_table_front", "crafting_table_side", "crafting_table_top"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -592,9 +578,7 @@ internal sealed class CraftingTable : SolidBlock {
 
 internal sealed class LogOak : SolidBlock {
 
-    public LogOak() {
-        _textureNameSet = ["log_oak", "log_oak_top"];
-    }
+    public LogOak() => _textureNameSet = ["log_oak", "log_oak_top"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -613,9 +597,7 @@ internal sealed class LogOak : SolidBlock {
 
 internal sealed class Grass : SolidBlock {
 
-    public Grass() {
-        _textureNameSet = ["grass_side", "grass_top", "dirt"];
-    }
+    public Grass() => _textureNameSet = ["grass_side", "grass_top", "dirt"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -638,9 +620,7 @@ internal sealed class Grass : SolidBlock {
 
 internal sealed class PlanksOakSolidStair : SolidStair {
 
-    public PlanksOakSolidStair() {
-        _textureNameSet = ["planks_oak"];
-    }
+    public PlanksOakSolidStair() => _textureNameSet = ["planks_oak"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -653,9 +633,7 @@ internal sealed class PlanksOakSolidStair : SolidStair {
 }
 
 internal sealed class GlassLightBlue : SolidBlock {
-    public GlassLightBlue() {
-        _textureNameSet = ["glass_light_blue"];
-    }
+    public GlassLightBlue() => _textureNameSet = ["glass_light_blue"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
@@ -833,9 +811,7 @@ internal class Door : Model {
         92, 93, 94, 92, 94, 95
     ];
 
-    public Door() {
-        _textureNameSet = ["door_wood_lower", "door_wood_upper"];
-    }
+    public Door() => _textureNameSet = ["door_wood_lower", "door_wood_upper"];
 
     public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
 
@@ -1177,9 +1153,7 @@ internal sealed class Bed : Model {
         28, 29, 30, 28, 30, 31
     ];
 
-    public Bed() {
-        _textureNameSet = ["bed_feet_end", "bed_feet_side", "bed_feet_top", "bed_head_top", "bed_head_side", "bed_head_end"];
-    }
+    public Bed() => _textureNameSet = ["bed_feet_end", "bed_feet_side", "bed_feet_top", "bed_head_top", "bed_head_side", "bed_head_end"];
 
     public override void CreateResourceAndDescriptor(ID3D12Device4 d3d12Device) {
 
@@ -2104,10 +2078,9 @@ internal sealed class DX12Engine {
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint CeilToMultiple(uint value, uint multiple) {
+    private static uint CeilToMultiple(uint value, uint multiple) =>
         // assumes `multiple` is power-of-two (true for D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)
-        return (value + multiple - 1) & ~(multiple - 1);
-    }
+        (value + multiple - 1) & ~(multiple - 1);
 
     private void CreateUploadAndDefaultResource(TextureMapInfo info) {
         _bytesPerRowSize = (_textureWidth * _bitsPerPixel + 7) / 8;
@@ -2628,9 +2601,7 @@ internal sealed class DX12Engine {
     }
 
 
-    private unsafe void UpdateConstantBuffer() {
-        Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
-    }
+    private unsafe void UpdateConstantBuffer() => Unsafe.AsRef<CBuffer>((void*)_mvpBuffer).MVPMatrix = _firstCamera.MVPMatrix;
 
     private unsafe void Render() {
         UpdateConstantBuffer();

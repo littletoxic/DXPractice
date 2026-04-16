@@ -5,9 +5,7 @@ namespace DXDemo8WBOIT.Models;
 
 internal sealed class Dirt : SolidBlock {
 
-    public Dirt() {
-        _textureNameSet = ["dirt"];
-    }
+    public Dirt() => _textureNameSet = ["dirt"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);

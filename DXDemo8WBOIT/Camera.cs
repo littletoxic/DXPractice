@@ -77,9 +77,7 @@ internal sealed class Camera {
         _focusPosition = _eyePosition + _focalLength * _viewDirection;
     }
 
-    internal void UpdateLastCursorPos() {
-        GetCursorPos(out _lastCursorPoint);
-    }
+    internal void UpdateLastCursorPos() => GetCursorPos(out _lastCursorPoint);
 
     // 当鼠标左键长按并移动时，旋转摄像机视角
     internal void CameraRotate() {

@@ -5,9 +5,7 @@ namespace DXDemo8WBOIT.Models;
 
 internal sealed class Furnace : SolidBlock {
 
-    public Furnace() {
-        _textureNameSet = ["furnace_front_off", "furnace_side", "furnace_top"];
-    }
+    public Furnace() => _textureNameSet = ["furnace_front_off", "furnace_side", "furnace_top"];
 
     public override void DrawModel(ID3D12GraphicsCommandList commandList) {
         commandList.IASetIndexBuffer(_indexBufferView);
