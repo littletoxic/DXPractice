@@ -75,3 +75,17 @@ SetWindowText
 D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT
 
 WaitForSingleObject
+
+// DXDemo16
+D3D11On12CreateDevice
+D2D1CreateFactory
+GetDpiForWindow
+
+D3D11_CREATE_DEVICE_FLAG
+
+ID3D11Device5
+ID3D11DeviceContext4
+ID3D11On12Device1
+ID2D1Factory7
+ID2D1Device6
+ID2D1DeviceContext6
