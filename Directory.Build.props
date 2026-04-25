@@ -8,7 +8,11 @@
 		<CsWin32RunAsBuildTask>true</CsWin32RunAsBuildTask>
 		<DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
 		<AnalysisLevel>latest-recommended</AnalysisLevel>
-		<NoWarn>CA1822;CA1001</NoWarn>
+		<NoWarn>
+			CA1822;
+			CA1001;
+			CA1805;
+		</NoWarn>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	</PropertyGroup>
 

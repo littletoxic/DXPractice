@@ -209,7 +209,7 @@ internal sealed unsafe class DX12Engine {
             out var tempSwapChain);
 
         // CreateSwapChainForHwnd 不能直接用于创建高版本接口
-        _dxgiSwapChain = tempSwapChain as IDXGISwapChain3;
+        _dxgiSwapChain = (IDXGISwapChain3)tempSwapChain;
 
         _rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
         _rtvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(type);

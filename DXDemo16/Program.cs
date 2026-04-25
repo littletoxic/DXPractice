@@ -34,7 +34,7 @@ internal sealed class D2DEngine {
     private ID3D11DeviceContext4 _d3d11DeviceContext;
     private ID3D11On12Device1 _d3d11On12Device;
 
-    private D2D1_FACTORY_OPTIONS _d2dCreateFactoryOptions;
+    private D2D1_FACTORY_OPTIONS _d2dCreateFactoryOptions = new();
 
     private readonly D2D1_DEVICE_CONTEXT_OPTIONS _d2dCreateDeviceContextOptions = D2D1_DEVICE_CONTEXT_OPTIONS_NONE;
 
@@ -76,10 +76,10 @@ internal sealed class D2DEngine {
             out var tempD3D11Device,
             out var tempD3D11DeviceContext).ThrowOnFailure();
 
-        _d3d11Device = tempD3D11Device as ID3D11Device5;
-        _d3d11DeviceContext = tempD3D11DeviceContext as ID3D11DeviceContext4;
+        _d3d11Device = (ID3D11Device5)tempD3D11Device;
+        _d3d11DeviceContext = (ID3D11DeviceContext4)tempD3D11DeviceContext;
 
-        _d3d11On12Device = _d3d11Device as ID3D11On12Device1;
+        _d3d11On12Device = (ID3D11On12Device1)_d3d11Device;
     }
 
     internal void D2D_STEP02_CreateD2DDevice() {
@@ -92,7 +92,7 @@ internal sealed class D2DEngine {
             _d2dCreateFactoryOptions,
             out _d2dFactory).ThrowOnFailure();
 
-        var tempDXGIDevice = _d3d11Device as IDXGIDevice;
+        var tempDXGIDevice = (IDXGIDevice)_d3d11Device;
 
         _d2dFactory.CreateDevice(tempDXGIDevice, out _d2dDevice);
         _d2dDevice.CreateDeviceContext(_d2dCreateDeviceContextOptions, out _d2dDeviceContext);
@@ -128,7 +128,7 @@ internal sealed class D2DEngine {
                 D3D12_RESOURCE_STATE_PRESENT,
                 out _d3d11WrappedRenderTarget[i]);
 
-            var tempDXGISurface = _d3d11WrappedRenderTarget[i] as IDXGISurface;
+            var tempDXGISurface = (IDXGISurface)_d3d11WrappedRenderTarget[i];
 
             _d2dDeviceContext.CreateBitmapFromDxgiSurface(tempDXGISurface, bitmapProperties, out _d2dRenderTarget[i]);
         }
@@ -290,7 +290,7 @@ internal sealed class D2DEngine {
         };
         _d2dDeviceContext.DrawBitmap(_hudBitmap, destinationCrossHairRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceCrossHairRect);
 
-        _d2dDeviceContext.EndDraw(out _, out _);
+        _d2dDeviceContext.EndDraw(out _, out _).ThrowOnFailure();
         _d2dDeviceContext.SetTarget(null);
 
         _d3d11On12Device.ReleaseWrappedResources([_d3d11WrappedRenderTarget[currentFrameIndex]]);
@@ -318,14 +318,6 @@ internal sealed class DX12Engine {
 
     private const int WindowWidth = 1280;
     private const int WindowHeight = 720;
-
-    private static readonly D3D12_HEAP_PROPERTIES UploadHeapDesc = new() {
-        Type = D3D12_HEAP_TYPE_UPLOAD,
-    };
-
-    private static readonly D3D12_HEAP_PROPERTIES DefaultHeapDesc = new() {
-        Type = D3D12_HEAP_TYPE_DEFAULT,
-    };
 
     private HWND _hwnd;
 
@@ -485,7 +477,7 @@ internal sealed class DX12Engine {
             out var tempSwapChain);
 
         // CreateSwapChainForHwnd 不能直接用于创建高版本接口
-        _dxgiSwapChain = tempSwapChain as IDXGISwapChain3;
+        _dxgiSwapChain = (IDXGISwapChain3)tempSwapChain;
 
         _rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
         _rtvDescriptorSize = _d3d12Device.GetDescriptorHandleIncrementSize(type);
@@ -543,7 +535,7 @@ internal sealed class DX12Engine {
         _beginBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_beginBarrier]);
 
-        _commandList.OMSetRenderTargets(1, _rtvHandle, false, null);
+        _commandList.OMSetRenderTargets(1, _rtvHandle, false);
 
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue);
 
