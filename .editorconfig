@@ -251,3 +251,6 @@ dotnet_diagnostic.IDE0032.severity = silent
 
 # IDE0045: 转换为条件表达式
 dotnet_diagnostic.IDE0045.severity = silent
+
+# IDE0046: 转换为条件表达式
+dotnet_diagnostic.IDE0046.severity = silent

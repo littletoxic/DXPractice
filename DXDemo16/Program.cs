@@ -61,6 +61,41 @@ internal sealed class D2DEngine {
     private const string InventoryBitmapFileName = "resource/widgets.png";
     private const string HUDBitmapFileName = "resource/icons.png";
 
+    internal float ComponentsScaleRate { get; set; } = 2.0f;
+    internal int SelectedSlotIndex { get; set; }
+
+    private const float HotBarWidth = 180;
+    private const float HotBarHeight = 20;
+    private D2D_RECT_F _sourceHotBarInventoryRect;
+    private D2D_RECT_F _destinationHotBarInventoryRect;
+
+    private const float SlotWidth = 22;
+    private const float SlotHeight = 22;
+    private D2D_RECT_F _sourceSlotRect;
+    private D2D_RECT_F _destinationSlotRect;
+
+    private const float XPBarWidth = 182;
+    private const float XPBarHeight = 5;
+    private D2D_RECT_F _sourceXpBarRect;
+    private D2D_RECT_F _destinationXpBarRect;
+
+    private const float HeartWidth = 9;
+    private const float HeartHeight = 9;
+    private D2D_RECT_F _sourceEmptyHeartRect;
+    private D2D_RECT_F _sourceFullHeartRect;
+    private D2D_RECT_F _destinationHeartRect;
+
+    private const float HungerBarWidth = 9;
+    private const float HungerBarHeight = 9;
+    private D2D_RECT_F _sourceHungerBarRect;
+    private D2D_RECT_F _destinationHungerBarRect;
+
+    private const float CrossHairWidth = 9;
+    private const float CrossHairHeight = 9;
+    private D2D_RECT_F _sourceCrossHairRect;
+    private D2D_RECT_F _destinationCrossHairRect;
+
+
     internal void D2D_STEP01_CreateD3D11Device(ID3D12Device4 device, ID3D12CommandQueue commandQueue) {
 #if DEBUG
         _d3d11CreateDeviceFlag |= (uint)D3D11_CREATE_DEVICE_DEBUG;
@@ -205,90 +240,78 @@ internal sealed class D2DEngine {
     }
 
     internal void D2DUIRender(uint currentFrameIndex, uint windowWidth, uint windowHeight) {
-        const float hotBarWidth = 180;
-        const float hotBarHeight = 20;
-        const float slotWidth = 22;
-        const float slotHeight = 22;
-        const float xpBarWidth = 182;
-        const float xpBarHeight = 5;
-        const float heartWidth = 9;
-        const float heartHeight = 9;
-        const float hungerBarWidth = 9;
-        const float hungerBarHeight = 9;
-        const float crossHairWidth = 9;
-        const float crossHairHeight = 9;
 
         _d3d11On12Device.AcquireWrappedResources([_d3d11WrappedRenderTarget[currentFrameIndex]]);
         _d2dDeviceContext.SetTarget(_d2dRenderTarget[currentFrameIndex]);
         _d2dDeviceContext.BeginDraw();
 
-        D2D_RECT_F sourceHotBarInventoryRect = new() { left = 1, top = 1, right = 1 + hotBarWidth, bottom = 1 + hotBarHeight };
-        D2D_RECT_F destinationHotBarInventoryRect = new() {
-            left = (windowWidth - hotBarWidth * ComponentsScaleRate) / 2,
-            top = windowHeight - hotBarHeight * ComponentsScaleRate,
-            right = (windowWidth - hotBarWidth * ComponentsScaleRate) / 2 + hotBarWidth * ComponentsScaleRate,
+        _sourceHotBarInventoryRect = new() { left = 1, top = 1, right = 1 + HotBarWidth, bottom = 1 + HotBarHeight };
+        _destinationHotBarInventoryRect = new() {
+            left = (windowWidth - HotBarWidth * ComponentsScaleRate) / 2,
+            top = windowHeight - HotBarHeight * ComponentsScaleRate,
+            right = (windowWidth - HotBarWidth * ComponentsScaleRate) / 2 + HotBarWidth * ComponentsScaleRate,
             bottom = windowHeight
         };
-        _d2dDeviceContext.DrawBitmap(_inventoryBitmap, destinationHotBarInventoryRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceHotBarInventoryRect);
+        _d2dDeviceContext.DrawBitmap(_inventoryBitmap, _destinationHotBarInventoryRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceHotBarInventoryRect);
 
-        D2D_RECT_F sourceSlotRect = new() { left = 1, top = 23, right = 1 + slotWidth, bottom = 23 + slotHeight };
-        D2D_RECT_F destinationSlotRect = new() {
-            left = destinationHotBarInventoryRect.left - 1 * ComponentsScaleRate + SelectedSlotIndex * 20 * ComponentsScaleRate,
-            top = destinationHotBarInventoryRect.top - 1 * ComponentsScaleRate,
-            right = destinationHotBarInventoryRect.left - 1 * ComponentsScaleRate + SelectedSlotIndex * 20 * ComponentsScaleRate + slotWidth * ComponentsScaleRate,
-            bottom = destinationHotBarInventoryRect.top - 1 * ComponentsScaleRate + slotHeight * ComponentsScaleRate
+        _sourceSlotRect = new() { left = 1, top = 23, right = 1 + SlotWidth, bottom = 23 + SlotHeight };
+        _destinationSlotRect = new() {
+            left = _destinationHotBarInventoryRect.left - 1 * ComponentsScaleRate + SelectedSlotIndex * 20 * ComponentsScaleRate,
+            top = _destinationHotBarInventoryRect.top - 1 * ComponentsScaleRate,
+            right = _destinationHotBarInventoryRect.left - 1 * ComponentsScaleRate + SelectedSlotIndex * 20 * ComponentsScaleRate + SlotWidth * ComponentsScaleRate,
+            bottom = _destinationHotBarInventoryRect.top - 1 * ComponentsScaleRate + SlotHeight * ComponentsScaleRate
         };
-        _d2dDeviceContext.DrawBitmap(_inventoryBitmap, destinationSlotRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceSlotRect);
+        _d2dDeviceContext.DrawBitmap(_inventoryBitmap, _destinationSlotRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceSlotRect);
 
-        D2D_RECT_F sourceXpBarRect = new() { left = 0, top = 64, right = xpBarWidth, bottom = 64 + xpBarHeight };
-        D2D_RECT_F destinationXpBarRect = new() {
-            left = destinationHotBarInventoryRect.left,
-            top = destinationHotBarInventoryRect.top - 7 * ComponentsScaleRate,
-            right = destinationHotBarInventoryRect.right,
-            bottom = destinationHotBarInventoryRect.top - 7 * ComponentsScaleRate + xpBarHeight * ComponentsScaleRate
+        _sourceXpBarRect = new() { left = 0, top = 64, right = XPBarWidth, bottom = 64 + XPBarHeight };
+        _destinationXpBarRect = new() {
+            left = _destinationHotBarInventoryRect.left,
+            top = _destinationHotBarInventoryRect.top - 7 * ComponentsScaleRate,
+            right = _destinationHotBarInventoryRect.right,
+            bottom = _destinationHotBarInventoryRect.top - 7 * ComponentsScaleRate + XPBarHeight * ComponentsScaleRate
         };
-        _d2dDeviceContext.DrawBitmap(_hudBitmap, destinationXpBarRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceXpBarRect);
+        _d2dDeviceContext.DrawBitmap(_hudBitmap, _destinationXpBarRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceXpBarRect);
 
-        D2D_RECT_F sourceEmptyHeartRect = new() { left = 16, top = 0, right = 16 + heartWidth, bottom = heartWidth };
-        D2D_RECT_F sourceFullHeartRect = new() { left = 52, top = 0, right = 52 + heartWidth, bottom = heartWidth };
-        D2D_RECT_F destinationHeartRect = new() {
-            left = destinationXpBarRect.left,
-            top = destinationXpBarRect.top - 10 * ComponentsScaleRate,
-            right = destinationXpBarRect.left + heartWidth * ComponentsScaleRate,
-            bottom = destinationXpBarRect.top - 10 * ComponentsScaleRate + heartHeight * ComponentsScaleRate
-        };
-
-        for (uint i = 0; i < 10; i++) {
-            _d2dDeviceContext.DrawBitmap(_hudBitmap, destinationHeartRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceEmptyHeartRect);
-            _d2dDeviceContext.DrawBitmap(_hudBitmap, destinationHeartRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceFullHeartRect);
-
-            destinationHeartRect.left += (heartWidth - 1) * ComponentsScaleRate;
-            destinationHeartRect.right += (heartWidth - 1) * ComponentsScaleRate;
-        }
-
-        D2D_RECT_F sourceHungerBarRect = new() { left = 256 - 16 - hungerBarWidth, top = 36, right = 256 - 16, bottom = 36 + hungerBarHeight };
-        D2D_RECT_F destinationHungerBarRect = new() {
-            left = destinationXpBarRect.right - hungerBarWidth * ComponentsScaleRate,
-            top = destinationXpBarRect.top - 10 * ComponentsScaleRate,
-            right = destinationXpBarRect.right,
-            bottom = destinationXpBarRect.top - 10 * ComponentsScaleRate + hungerBarHeight * ComponentsScaleRate
+        _sourceEmptyHeartRect = new() { left = 16, top = 0, right = 16 + HeartWidth, bottom = HeartWidth };
+        _sourceFullHeartRect = new() { left = 52, top = 0, right = 52 + HeartWidth, bottom = HeartWidth };
+        _destinationHeartRect = new() {
+            left = _destinationXpBarRect.left,
+            top = _destinationXpBarRect.top - 10 * ComponentsScaleRate,
+            right = _destinationXpBarRect.left + HeartWidth * ComponentsScaleRate,
+            bottom = _destinationXpBarRect.top - 10 * ComponentsScaleRate + HeartHeight * ComponentsScaleRate
         };
 
         for (uint i = 0; i < 10; i++) {
-            _d2dDeviceContext.DrawBitmap(_flippedHUDBitmap, destinationHungerBarRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceHungerBarRect);
+            _d2dDeviceContext.DrawBitmap(_hudBitmap, _destinationHeartRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceEmptyHeartRect);
+            _d2dDeviceContext.DrawBitmap(_hudBitmap, _destinationHeartRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceFullHeartRect);
 
-            destinationHungerBarRect.left -= (hungerBarWidth - 1) * ComponentsScaleRate;
-            destinationHungerBarRect.right -= (hungerBarWidth - 1) * ComponentsScaleRate;
+            _destinationHeartRect.left += (HeartWidth - 1) * ComponentsScaleRate;
+            _destinationHeartRect.right += (HeartWidth - 1) * ComponentsScaleRate;
         }
 
-        D2D_RECT_F sourceCrossHairRect = new() { left = 3, top = 3, right = 3 + crossHairWidth, bottom = 3 + crossHairHeight };
-        D2D_RECT_F destinationCrossHairRect = new() {
-            left = (float)(windowWidth / 2.0 - crossHairWidth * ComponentsScaleRate / 2.0),
-            top = (float)(windowHeight / 2.0 - crossHairHeight * ComponentsScaleRate / 2.0),
-            right = (float)(windowWidth / 2.0 - crossHairWidth * ComponentsScaleRate / 2.0 + crossHairWidth * ComponentsScaleRate),
-            bottom = (float)(windowHeight / 2.0 - crossHairHeight * ComponentsScaleRate / 2.0 + crossHairHeight * ComponentsScaleRate)
+        _sourceHungerBarRect = new() { left = 256 - 16 - HungerBarWidth, top = 36, right = 256 - 16, bottom = 36 + HungerBarHeight };
+        _destinationHungerBarRect = new() {
+            left = _destinationXpBarRect.right - HungerBarWidth * ComponentsScaleRate,
+            top = _destinationXpBarRect.top - 10 * ComponentsScaleRate,
+            right = _destinationXpBarRect.right,
+            bottom = _destinationXpBarRect.top - 10 * ComponentsScaleRate + HungerBarHeight * ComponentsScaleRate
         };
-        _d2dDeviceContext.DrawBitmap(_hudBitmap, destinationCrossHairRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, sourceCrossHairRect);
+
+        for (uint i = 0; i < 10; i++) {
+            _d2dDeviceContext.DrawBitmap(_flippedHUDBitmap, _destinationHungerBarRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceHungerBarRect);
+
+            _destinationHungerBarRect.left -= (HungerBarWidth - 1) * ComponentsScaleRate;
+            _destinationHungerBarRect.right -= (HungerBarWidth - 1) * ComponentsScaleRate;
+        }
+
+        _sourceCrossHairRect = new() { left = 3, top = 3, right = 3 + CrossHairWidth, bottom = 3 + CrossHairHeight };
+        _destinationCrossHairRect = new() {
+            left = (float)(windowWidth / 2.0 - CrossHairWidth * ComponentsScaleRate / 2.0),
+            top = (float)(windowHeight / 2.0 - CrossHairHeight * ComponentsScaleRate / 2.0),
+            right = (float)(windowWidth / 2.0 - CrossHairWidth * ComponentsScaleRate / 2.0 + CrossHairWidth * ComponentsScaleRate),
+            bottom = (float)(windowHeight / 2.0 - CrossHairHeight * ComponentsScaleRate / 2.0 + CrossHairHeight * ComponentsScaleRate)
+        };
+        _d2dDeviceContext.DrawBitmap(_hudBitmap, _destinationCrossHairRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceCrossHairRect);
 
         _d2dDeviceContext.EndDraw(out _, out _).ThrowOnFailure();
         _d2dDeviceContext.SetTarget(null);
@@ -297,8 +320,6 @@ internal sealed class D2DEngine {
         _d3d11DeviceContext.Flush();
     }
 
-    internal float ComponentsScaleRate { get; set; } = 2.0f;
-    internal int SelectedSlotIndex { get; set; }
 }
 
 internal sealed class DX12Engine {
