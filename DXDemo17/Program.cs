@@ -245,21 +245,7 @@ internal sealed class D2DEngine {
         new(1, 1, -1, 1)
     ];
 
-    [InlineArray(3)]
-    [CollectionBuilder(typeof(Buffer3Builder), nameof(Buffer3Builder.Create))]
-    internal struct Buffer3<T> where T : unmanaged {
-        private T _element0;
-    }
-
-    internal static class Buffer3Builder {
-        internal static Buffer3<T> Create<T>(ReadOnlySpan<T> values) where T : unmanaged {
-            var buffer = default(Buffer3<T>);
-            values.CopyTo(buffer);
-            return buffer;
-        }
-    }
-
-    private record struct ItemCubeFace(Buffer3<int> FaceBitmapIndex);
+    private record struct ItemCubeFace(int[] FaceBitmapIndex);
 
     private static readonly List<ItemCubeFace> BlockBitmapIndexGroup = [
         // 右面 (+X) -> 后面 (-Z) -> 上面 (+Y)
@@ -272,7 +258,7 @@ internal sealed class D2DEngine {
         new([13, 12, 12]),     // 5.发射器
         new([15, 15, 14]),     // 6.书架
         new([16, 16, 16]),     // 7.钻石原矿
-        new([17, 17, 17])      // 8.活塞
+        new([17, 17, 17])      // 8.萤石
     ];
 
     private readonly List<ID2D1Bitmap> _inventoryBlockIcons = [];
@@ -597,8 +583,8 @@ internal sealed class D2DEngine {
         };
         _d2dDeviceContext.DrawBitmap(_hudBitmap, _destinationXpBarRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceXpBarRect);
 
-        _sourceEmptyHeartRect = new() { left = 16, top = 0, right = 16 + HeartWidth, bottom = HeartWidth };
-        _sourceFullHeartRect = new() { left = 52, top = 0, right = 52 + HeartWidth, bottom = HeartWidth };
+        _sourceEmptyHeartRect = new() { left = 16, top = 0, right = 16 + HeartWidth, bottom = HeartHeight };
+        _sourceFullHeartRect = new() { left = 52, top = 0, right = 52 + HeartWidth, bottom = HeartHeight };
         _destinationHeartRect = new() {
             left = _destinationXpBarRect.left,
             top = _destinationXpBarRect.top - 10 * ComponentsScaleRate,
@@ -923,11 +909,11 @@ internal sealed class DX12Engine {
 
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
-    private static readonly PCSTR Position = CreatePCSTR("POSITION");
-    private static readonly PCSTR TexCoord = CreatePCSTR("TEXCOORD");
-    private static readonly PCSTR FaceIndex = CreatePCSTR("FACEINDEX");
-    private static readonly PCSTR BlockOffset = CreatePCSTR("BLOCKOFFSET");
-    private static readonly PCSTR BlockType = CreatePCSTR("BLOCKTYPE");
+    private static readonly PCSTR Position = AllocatePCSTR("POSITION");
+    private static readonly PCSTR TexCoord = AllocatePCSTR("TEXCOORD");
+    private static readonly PCSTR FaceIndex = AllocatePCSTR("FACEINDEX");
+    private static readonly PCSTR BlockOffset = AllocatePCSTR("BLOCKOFFSET");
+    private static readonly PCSTR BlockType = AllocatePCSTR("BLOCKTYPE");
 
     private ID3D12PipelineState _renderBlockPSO;
 

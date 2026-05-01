@@ -402,11 +402,11 @@ internal sealed class DX12Engine {
 
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
-    private static readonly PCSTR Position = CreatePCSTR("POSITION");
-    private static readonly PCSTR TexCoord = CreatePCSTR("TEXCOORD");
-    private static readonly PCSTR Color = CreatePCSTR("COLOR");
-    private static readonly PCSTR BlendIndices = CreatePCSTR("BLENDINDICES");
-    private static readonly PCSTR BlendWeight = CreatePCSTR("BLENDWEIGHT");
+    private static readonly PCSTR Position = AllocatePCSTR("POSITION");
+    private static readonly PCSTR TexCoord = AllocatePCSTR("TEXCOORD");
+    private static readonly PCSTR Color = AllocatePCSTR("COLOR");
+    private static readonly PCSTR BlendIndices = AllocatePCSTR("BLENDINDICES");
+    private static readonly PCSTR BlendWeight = AllocatePCSTR("BLENDWEIGHT");
 
     private ID3D12PipelineState _pipelineStateObject;
 

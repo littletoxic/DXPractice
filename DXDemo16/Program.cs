@@ -272,8 +272,8 @@ internal sealed class D2DEngine {
         };
         _d2dDeviceContext.DrawBitmap(_hudBitmap, _destinationXpBarRect, 1, D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR, _sourceXpBarRect);
 
-        _sourceEmptyHeartRect = new() { left = 16, top = 0, right = 16 + HeartWidth, bottom = HeartWidth };
-        _sourceFullHeartRect = new() { left = 52, top = 0, right = 52 + HeartWidth, bottom = HeartWidth };
+        _sourceEmptyHeartRect = new() { left = 16, top = 0, right = 16 + HeartWidth, bottom = HeartHeight };
+        _sourceFullHeartRect = new() { left = 52, top = 0, right = 52 + HeartWidth, bottom = HeartHeight };
         _destinationHeartRect = new() {
             left = _destinationXpBarRect.left,
             top = _destinationXpBarRect.top - 10 * ComponentsScaleRate,

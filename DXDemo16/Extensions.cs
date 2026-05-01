@@ -29,7 +29,7 @@ internal static partial class PInvoke {
         return hr;
     }
 
-    internal static unsafe PCSTR CreatePCSTR(string str) => (PCSTR)(byte*)Marshal.StringToHGlobalAnsi(str);
+    internal static unsafe PCSTR AllocatePCSTR(string str) => (PCSTR)(byte*)Marshal.StringToHGlobalAnsi(str);
 
     internal static HRESULT D2D1CreateFactory<T>(D2D1_FACTORY_TYPE factoryType, [Optional] D2D1_FACTORY_OPTIONS? pFactoryOptions, out T device) where T : class, ID2D1Factory {
         var hr = D2D1CreateFactory(factoryType, typeof(T).GUID, pFactoryOptions, out var result);

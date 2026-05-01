@@ -407,11 +407,11 @@ internal sealed class DX12Engine {
 
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
-    private static readonly PCSTR Position = CreatePCSTR("POSITION");
-    private static readonly PCSTR TexCoord = CreatePCSTR("TEXCOORD");
-    private static readonly PCSTR FaceIndex = CreatePCSTR("FACEINDEX");
-    private static readonly PCSTR BlockOffset = CreatePCSTR("BLOCKOFFSET");
-    private static readonly PCSTR BlockType = CreatePCSTR("BLOCKTYPE");
+    private static readonly PCSTR Position = AllocatePCSTR("POSITION");
+    private static readonly PCSTR TexCoord = AllocatePCSTR("TEXCOORD");
+    private static readonly PCSTR FaceIndex = AllocatePCSTR("FACEINDEX");
+    private static readonly PCSTR BlockOffset = AllocatePCSTR("BLOCKOFFSET");
+    private static readonly PCSTR BlockType = AllocatePCSTR("BLOCKTYPE");
 
     private ID3D12PipelineState _renderBlockPSO;
 

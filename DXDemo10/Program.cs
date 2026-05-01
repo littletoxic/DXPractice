@@ -374,8 +374,8 @@ internal sealed class DX12Engine {
 
     private ComPtr<ID3D12RootSignature> _rootSignature;
 
-    private static readonly PCSTR Position = CreatePCSTR("POSITION");
-    private static readonly PCSTR TexCoord = CreatePCSTR("TEXCOORD");
+    private static readonly PCSTR Position = AllocatePCSTR("POSITION");
+    private static readonly PCSTR TexCoord = AllocatePCSTR("TEXCOORD");
 
     private ID3D12PipelineState _pipelineStateObject;
 
