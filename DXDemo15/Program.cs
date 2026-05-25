@@ -786,7 +786,7 @@ internal sealed class DX12Engine {
         _textureGroup[0].WICBitmapSource.GetSize(out _textureWidth, out _textureHeight);
 
         _bytesPerRowSize = (_textureWidth * _bitsPerPixel + 7) / 8;
-        _textureSize = _bytesPerRowSize * _textureHeight;
+        _textureSize = (ulong)_bytesPerRowSize * _textureHeight;
 
         _uploadResourceRowSize = CeilToMultiple(_bytesPerRowSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
         _uploadSubResourceSize = _uploadResourceRowSize * (_textureHeight - 1) + _bytesPerRowSize;
