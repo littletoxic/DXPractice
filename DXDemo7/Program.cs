@@ -1243,13 +1243,13 @@ internal sealed class DX12Engine {
         // 设置资源屏障
         // _beginBarrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
         _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _beginBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        _beginBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         // _endBarrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
         _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+        _endBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _endBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     private void CreateDSVHeap() {
@@ -1278,11 +1278,9 @@ internal sealed class DX12Engine {
 
         var depthStencilBufferClearValue = new D3D12_CLEAR_VALUE() {
             Format = _dsvFormat,
-            Anonymous = new D3D12_CLEAR_VALUE._Anonymous_e__Union() {
-                DepthStencil = new D3D12_DEPTH_STENCIL_VALUE() {
-                    Depth = 1.0f,
-                    Stencil = 0,
-                }
+            DepthStencil = new D3D12_DEPTH_STENCIL_VALUE() {
+                Depth = 1.0f,
+                Stencil = 0,
             }
         };
 
@@ -1469,13 +1467,13 @@ internal sealed class DX12Engine {
 
         var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            Anonymous = new() { SubresourceIndex = 0 },
+            SubresourceIndex = 0,
             pResource = (ID3D12Resource_unmanaged*)info.DefaultHeapTextureResource.Ptr,
         };
 
         var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-            Anonymous = new() { PlacedFootprint = placedFootprint },
+            PlacedFootprint = placedFootprint,
             pResource = (ID3D12Resource_unmanaged*)info.UploadHeapTextureResource.Ptr,
         };
 
@@ -1491,7 +1489,7 @@ internal sealed class DX12Engine {
             ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
             Format = _textureFormat,
             Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-            Anonymous = new() { Texture2D = new() { MipLevels = 1 } },
+            Texture2D = new() { MipLevels = 1 },
         };
 
         _d3d12Device.CreateShaderResourceView(info.DefaultHeapTextureResource.Managed, srvDescriptorDesc, cpuHandle);
@@ -1580,7 +1578,7 @@ internal sealed class DX12Engine {
         rootParameters[0] = new D3D12_ROOT_PARAMETER() {
             ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
             ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV,
-            Anonymous = new() { Descriptor = cbvRootDescriptorDesc },
+            Descriptor = cbvRootDescriptorDesc,
         };
 
 
@@ -1600,7 +1598,7 @@ internal sealed class DX12Engine {
         rootParameters[1] = new D3D12_ROOT_PARAMETER() {
             ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
             ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-            Anonymous = new() { DescriptorTable = rootDescriptorTableDesc },
+            DescriptorTable = rootDescriptorTableDesc,
         };
 
 
@@ -1788,7 +1786,7 @@ internal sealed class DX12Engine {
         _commandAllocator.Reset();
         _commandList.Reset(_commandAllocator);
 
-        _beginBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.SetGraphicsRootSignature(_rootSignature.Managed);
@@ -1811,7 +1809,7 @@ internal sealed class DX12Engine {
 
         _modelManager.RenderAllModel(_commandList);
 
-        _endBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_endBarrier]);
 
         _commandList.Close();

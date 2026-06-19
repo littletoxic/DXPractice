@@ -197,13 +197,13 @@ internal sealed unsafe class DX12Engine {
         // 设置资源屏障
         // _beginBarrier 起始屏障：Present 呈现状态 -> Render Target 渲染目标状态
         _beginBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _beginBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        _beginBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _beginBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        _beginBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         // _endBarrier 终止屏障：Render Target 渲染目标状态 -> Present 呈现状态
         _endBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        _endBarrier.Anonymous.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        _endBarrier.Anonymous.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+        _endBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        _endBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     private void Render() {
@@ -214,13 +214,13 @@ internal sealed unsafe class DX12Engine {
         _commandAllocator.Reset();
         _commandList.Reset(_commandAllocator);
 
-        _beginBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.OMSetRenderTargets(1, _rtvHandle, false);
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue, 0, null);
 
-        _endBarrier.Anonymous.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
         _commandList.ResourceBarrier([_endBarrier]);
 
         _commandList.Close();
