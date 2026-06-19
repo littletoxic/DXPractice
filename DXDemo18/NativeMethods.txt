@@ -96,3 +96,5 @@ ID3D12InfoQueue
 // DXDemo18
 ShowCursor
 SetCursorPos
+
+VIRTUAL_KEY

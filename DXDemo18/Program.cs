@@ -19,6 +19,7 @@ using Windows.Win32.Graphics.Dxgi;
 using Windows.Win32.Graphics.Dxgi.Common;
 using Windows.Win32.Graphics.Imaging;
 using Windows.Win32.System.Com;
+using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace DXDemo18;
@@ -1069,6 +1070,7 @@ internal sealed class DX12Engine {
         "resource/quartz_block_bottom.png",             // 37.石英块底面
         "resource/quartz_block_side.png",               // 38.石英块侧面
         "resource/quartz_block_top.png",                // 39.石英块顶面
+
         "resource/destroy_stage_0.png",                 // 40.破坏阶段 (0)
         "resource/destroy_stage_1.png",                 // 41.破坏阶段 (1)
         "resource/destroy_stage_2.png",                 // 42.破坏阶段 (2)
@@ -1104,7 +1106,7 @@ internal sealed class DX12Engine {
         _hwnd = CreateWindowEx(
             0,
             className,
-            "Minecraft",
+            "Minecraft (按 Esc 键或 / 键退出)",
             WINDOW_STYLE.WS_SYSMENU | WINDOW_STYLE.WS_OVERLAPPED,
             10,
             10,
@@ -2310,7 +2312,7 @@ internal sealed class DX12Engine {
                 break;
 
             case WM_KEYDOWN:
-                if (wParam.Value == 0x1B)
+                if (wParam.Value == (nuint)VIRTUAL_KEY.VK_ESCAPE)
                     PostQuitMessage(0);
                 break;
 
