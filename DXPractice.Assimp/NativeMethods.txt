@@ -1,0 +1,26 @@
+// DXDemo9
+GetErrorString
+GetMaterialString
+GetMaterialTexture
+GetMaterialTextureCount
+ImportFile
+ReleaseImport
+
+Assimp.Node
+PostProcessSteps
+Assimp.Component
+
+AI_SCENE_FLAGS_INCOMPLETE
+
+// DXDemo10
+AI_MAX_NUMBER_OF_TEXTURECOORDS
+
+// DXDemo11
+AI_MAX_NUMBER_OF_COLOR_SETS
+
+// DXDemo11RenderFix
+GetMaterialIntegerArray
+
+// DXDemo12
+GetMaterialColor
+GetMaterialFloatArray

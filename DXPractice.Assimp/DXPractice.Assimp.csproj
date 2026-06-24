@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<PublishAot>false</PublishAot>
+		<CsWin32RunAsBuildTask>true</CsWin32RunAsBuildTask>
+		<NoWarn>
+			$(NoWarn);
+			CA1707; <!-- 公开原生常量名会包含下划线 这里保留 Assimp 原生命名 -->
+		</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\DXPractice.Win32\DXPractice.Win32.csproj" />
+		<PackageReference Include="LittleToxic.AssimpMetadata" />
+		<PackageReference Include="Microsoft.Windows.CsWin32">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+</Project>

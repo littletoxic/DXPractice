@@ -553,14 +553,14 @@ internal sealed class DX12Engine {
         _commandList.RSSetViewports([_viewPort]);
         _commandList.RSSetScissorRects([_scissorRect]);
 
-        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.OMSetRenderTargets(1, _rtvHandle, false);
 
         _commandList.ClearRenderTargetView(_rtvHandle, SkyBlue);
 
-        //_endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        //_endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         //_commandList.ResourceBarrier([_endBarrier]);
 
         _commandList.Close();

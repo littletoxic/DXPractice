@@ -3,15 +3,15 @@
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net11.0-windows10.0.17763.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<PublishAot>true</PublishAot>
 		<InvariantGlobalization>true</InvariantGlobalization>
-		<CsWin32RunAsBuildTask>true</CsWin32RunAsBuildTask>
 		<DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
 		<AnalysisLevel>latest-recommended</AnalysisLevel>
 		<NoWarn>
-			CA1822;
-			CA1001;
-			CA1805;
+			CA1822; <!-- 未使用实例状态的成员可标记为 static 这里保留 demo 的实例写法 -->
+			CA1001; <!-- 类型持有 IDisposable 字段时应实现 IDisposable 这里部分资源所有权由 DirectX 对象管理 -->
+			CA1805; <!-- 字段显式初始化为默认值 这里保留示例代码的直观写法 -->
 		</NoWarn>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	</PropertyGroup>

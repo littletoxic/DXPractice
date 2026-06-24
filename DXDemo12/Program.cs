@@ -1022,13 +1022,13 @@ internal sealed class DX12Engine {
         var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             SubresourceIndex = 0,
-            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].DefaultTexture.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].DefaultTexture.UnmanagedPointer,
         };
 
         var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
             PlacedFootprint = placedFootprint,
-            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].UploadTexture.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].UploadTexture.UnmanagedPointer,
         };
 
         _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
@@ -1118,13 +1118,13 @@ internal sealed class DX12Engine {
         var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             SubresourceIndex = 0,
-            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].DefaultTexture.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].DefaultTexture.UnmanagedPointer,
         };
 
         var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
             PlacedFootprint = placedFootprint,
-            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].UploadTexture.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)_materialGroup[index].UploadTexture.UnmanagedPointer,
         };
 
         _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
@@ -1190,7 +1190,7 @@ internal sealed class DX12Engine {
 
             CreateSRV(i, currentCPUHandle, currentGPUHandle);
 
-            barrier.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.Ptr;
+            barrier.Transition.pResource = (ID3D12Resource_unmanaged*)_materialGroup[i].DefaultTexture.UnmanagedPointer;
             _commandList.ResourceBarrier([barrier]);
 
             currentCPUHandle.ptr += srvDescriptorSize;
@@ -1602,7 +1602,7 @@ internal sealed class DX12Engine {
         psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 
-        psoDesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
+        psoDesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.UnmanagedPointer;
 
         psoDesc.DSVFormat = _dsvFormat;
         psoDesc.DepthStencilState.DepthEnable = true;
@@ -1661,7 +1661,7 @@ internal sealed class DX12Engine {
         _commandAllocator.Reset();
         _commandList.Reset(_commandAllocator);
 
-        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.SetGraphicsRootSignature(_rootSignature.Managed);
@@ -1695,7 +1695,7 @@ internal sealed class DX12Engine {
             _commandList.DrawIndexedInstanced(mesh.IndexCount, 1, mesh.IndexGroupOffset, mesh.VertexGroupOffset, 0);
         }
 
-        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         _commandList.ResourceBarrier([_endBarrier]);
 
         _commandList.Close();

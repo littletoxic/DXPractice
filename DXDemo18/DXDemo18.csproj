@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
 		<Content Include="RenderShader.hlsl" CopyToOutputDirectory="PreserveNewest" />
@@ -7,16 +7,13 @@
 		<Content Include="UIresource\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.Windows.CsWin32">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
-
 	<PropertyGroup>
 		<IlcGenerateMstatFile>true</IlcGenerateMstatFile>
 		<IlcGenerateDgmlFile>true</IlcGenerateDgmlFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\DXPractice.Win32\DXPractice.Win32.csproj" />
+	</ItemGroup>
 
 </Project>

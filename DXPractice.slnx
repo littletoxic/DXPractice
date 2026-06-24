@@ -27,4 +27,6 @@
   <Project Path="DXDemo8/DXDemo8.csproj" Id="39ca7132-8a4b-412f-9caa-83f8d2f29ef4" />
   <Project Path="DXDemo8WBOIT/DXDemo8WBOIT.csproj" Id="e2855db2-d9ae-464e-858f-91a8e36a9906" />
   <Project Path="DXDemo9/DXDemo9.csproj" Id="17cdc196-9bf0-41a5-88f2-7d2d26f8a381" />
+  <Project Path="DXPractice.Assimp/DXPractice.Assimp.csproj" />
+  <Project Path="DXPractice.Win32/DXPractice.Win32.csproj" />
 </Solution>

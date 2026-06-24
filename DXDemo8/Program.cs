@@ -2167,13 +2167,13 @@ internal sealed class DX12Engine {
         var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
             SubresourceIndex = 0,
-            pResource = (ID3D12Resource_unmanaged*)info.DefaultHeapTextureResource.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)info.DefaultHeapTextureResource.UnmanagedPointer,
         };
 
         var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
             Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
             PlacedFootprint = placedFootprint,
-            pResource = (ID3D12Resource_unmanaged*)info.UploadHeapTextureResource.Ptr,
+            pResource = (ID3D12Resource_unmanaged*)info.UploadHeapTextureResource.UnmanagedPointer,
         };
 
         _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
@@ -2434,7 +2434,7 @@ internal sealed class DX12Engine {
         _opaquePSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
         _opaquePSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 
-        _opaquePSODesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
+        _opaquePSODesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.UnmanagedPointer;
 
         _opaquePSODesc.DSVFormat = _dsvFormat;
         _opaquePSODesc.DepthStencilState.DepthEnable = true;
@@ -2613,7 +2613,7 @@ internal sealed class DX12Engine {
         _commandAllocator.Reset();
         _commandList.Reset(_commandAllocator);
 
-        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.SetGraphicsRootSignature(_rootSignature.Managed);
@@ -2645,7 +2645,7 @@ internal sealed class DX12Engine {
         _commandList.SetPipelineState(_translucencePSO);
         _modelManager.RenderTranslucenceModel(_commandList);
 
-        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         _commandList.ResourceBarrier([_endBarrier]);
 
         _commandList.Close();

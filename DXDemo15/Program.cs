@@ -876,13 +876,13 @@ internal sealed class DX12Engine {
             var dstLocation = new D3D12_TEXTURE_COPY_LOCATION() {
                 Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
                 SubresourceIndex = (uint)i,
-                pResource = (ID3D12Resource_unmanaged*)_textureArrayDefaultResource.Ptr,
+                pResource = (ID3D12Resource_unmanaged*)_textureArrayDefaultResource.UnmanagedPointer,
             };
 
             var srcLocation = new D3D12_TEXTURE_COPY_LOCATION() {
                 Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
                 PlacedFootprint = placedFootprint[i],
-                pResource = (ID3D12Resource_unmanaged*)_textureArrayUploadResource.Ptr,
+                pResource = (ID3D12Resource_unmanaged*)_textureArrayUploadResource.UnmanagedPointer,
             };
 
             _commandList.CopyTextureRegion(dstLocation, 0, 0, 0, srcLocation, default(D3D12_BOX?));
@@ -891,7 +891,7 @@ internal sealed class DX12Engine {
         var barrier = new D3D12_RESOURCE_BARRIER {
             Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
             Transition = new() {
-                pResource = (ID3D12Resource_unmanaged*)_textureArrayDefaultResource.Ptr,
+                pResource = (ID3D12Resource_unmanaged*)_textureArrayDefaultResource.UnmanagedPointer,
                 StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
                 StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             }
@@ -1237,7 +1237,7 @@ internal sealed class DX12Engine {
         psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 
-        psoDesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.Ptr;
+        psoDesc.pRootSignature = (ID3D12RootSignature_unmanaged*)_rootSignature.UnmanagedPointer;
 
         psoDesc.DSVFormat = _dsvFormat;
         psoDesc.DepthStencilState.DepthEnable = true;
@@ -1393,7 +1393,7 @@ internal sealed class DX12Engine {
         _commandAllocator.Reset();
         _commandList.Reset(_commandAllocator);
 
-        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _beginBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         _commandList.ResourceBarrier([_beginBarrier]);
 
         _commandList.RSSetViewports([_viewPort]);
@@ -1416,7 +1416,7 @@ internal sealed class DX12Engine {
         _commandList.IASetIndexBuffer(_indexBufferView);
         _commandList.DrawIndexedInstanced((uint)_perBlockIndexData.Length, (uint)_blockGroup.Count, 0, 0, 0);
 
-        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].Ptr;
+        _endBarrier.Transition.pResource = (ID3D12Resource_unmanaged*)_renderTargets[_frameIndex].UnmanagedPointer;
         _commandList.ResourceBarrier([_endBarrier]);
 
         _commandList.Close();
