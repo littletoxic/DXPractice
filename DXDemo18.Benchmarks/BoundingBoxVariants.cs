@@ -128,6 +128,10 @@ internal static class CurrentVector3BoundingBox {
 }
 
 internal static class DxMathLikeBoundingBox {
+    private const byte XIndex = 0;
+    private const byte YIndex = 1;
+    private const byte ZIndex = 2;
+
     private static readonly Vector3 RayEpsilon = new(1e-20f);
     private static readonly Vector3 FloatMin = new(-float.MaxValue);
     private static readonly Vector3 FloatMax = new(float.MaxValue);
@@ -152,17 +156,22 @@ internal static class DxMathLikeBoundingBox {
         var tMinVector = Vector3.ConditionalSelect(isParallel, FloatMin, Vector3.Min(t1, t2));
         var tMaxVector = Vector3.ConditionalSelect(isParallel, FloatMax, Vector3.Max(t1, t2));
 
-        var tMin = MaxComponent(tMinVector);
-        var tMax = MinComponent(tMaxVector);
+        tMinVector = Vector3.Max(tMinVector, SplatY(tMinVector));
+        tMinVector = Vector3.Max(tMinVector, SplatZ(tMinVector));
+        tMaxVector = Vector3.Min(tMaxVector, SplatY(tMaxVector));
+        tMaxVector = Vector3.Min(tMaxVector, SplatZ(tMaxVector));
 
-        var noIntersection = Vector3.GreaterThan(new(tMin), new(tMax));
-        noIntersection = Vector3.BitwiseOr(noIntersection, Vector3.LessThan(new(tMax), Vector3.Zero));
+        var tMinSplat = SplatX(tMinVector);
+        var tMaxSplat = SplatX(tMaxVector);
+
+        var noIntersection = Vector3.GreaterThan(tMinSplat, tMaxSplat);
+        noIntersection = Vector3.BitwiseOr(noIntersection, Vector3.LessThan(tMaxSplat, Vector3.Zero));
 
         var parallelOverlap = Vector3.LessThanOrEqual(Vector3.Abs(axisDotOrigin), bounds.Extents);
         noIntersection = Vector3.BitwiseOr(noIntersection, Vector3.AndNot(isParallel, parallelOverlap));
 
         if (!Vector3.AnyWhereAllBitsSet(noIntersection)) {
-            distance = tMin;
+            distance = tMinVector.X;
             return true;
         }
 
@@ -170,9 +179,14 @@ internal static class DxMathLikeBoundingBox {
         return false;
     }
 
-    private static float MaxComponent(Vector3 vector) => MathF.Max(vector.X, MathF.Max(vector.Y, vector.Z));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector3 SplatX(Vector3 vector) => Vector3.Shuffle(vector, XIndex, XIndex, XIndex);
 
-    private static float MinComponent(Vector3 vector) => MathF.Min(vector.X, MathF.Min(vector.Y, vector.Z));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector3 SplatY(Vector3 vector) => Vector3.Shuffle(vector, YIndex, YIndex, YIndex);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector3 SplatZ(Vector3 vector) => Vector3.Shuffle(vector, ZIndex, ZIndex, ZIndex);
 }
 
 internal static class Vector128BoundingBox {

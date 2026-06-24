@@ -14,4 +14,9 @@
 		</PackageReference>
 	</ItemGroup>
 
+	<PropertyGroup>
+		<IlcGenerateMstatFile>true</IlcGenerateMstatFile>
+		<IlcGenerateDgmlFile>true</IlcGenerateDgmlFile>
+	</PropertyGroup>
+
 </Project>
