@@ -1,8 +1,10 @@
 using System.Numerics;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 
 namespace DXDemo18.Benchmarks;
 
+[SimpleJob(RuntimeMoniker.NativeAot10_0)]
 [MemoryDiagnoser]
 public class BoundingBoxIntersectionBenchmarks {
     private const int OperationCount = 16_384;

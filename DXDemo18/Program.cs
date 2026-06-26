@@ -2101,7 +2101,7 @@ internal sealed class DX12Engine {
         _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
     }
 
-    private void STEP26_RenderLoop() {
+    private void STEP27_RenderLoop() {
         var exit = false;
         while (!exit) {
             var activeEvent = MsgWaitForMultipleObjects(
@@ -2130,6 +2130,12 @@ internal sealed class DX12Engine {
             }
 
         }
+
+        // 渲染循环退出后 等待 GPU 把已提交的命令全部执行完毕 再返回安全释放资源
+        _fenceValue++;
+        _commandQueue.Signal(_fence, _fenceValue);
+        _fence.SetEventOnCompletion(_fenceValue, _renderEvent);
+        WaitForSingleObject(_renderEvent, INFINITE);
     }
 
     private int ScreenRaycast() => ScreenRaycast(out _);
@@ -2388,7 +2394,7 @@ internal sealed class DX12Engine {
         engine.STEP25_CreatePerInstanceBuffer();
         engine.STEP26_CopyRotateMatrixToCBuffer();
 
-        engine.STEP26_RenderLoop();
+        engine.STEP27_RenderLoop();
     }
 
 }
