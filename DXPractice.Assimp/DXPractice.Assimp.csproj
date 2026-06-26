@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
+		<IsPublishable>false</IsPublishable>
 		<PublishAot>false</PublishAot>
 		<CsWin32RunAsBuildTask>true</CsWin32RunAsBuildTask>
 		<NoWarn>
